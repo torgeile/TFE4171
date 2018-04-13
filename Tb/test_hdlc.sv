@@ -17,6 +17,12 @@ module test_hdlc ();
 
   assign uin_hdlc.Tx_AbortedTrans    = u_dut.Tx_AbortedTrans;
   assign uin_hdlc.Rx_Data		     = u_dut.Rx_Data;
+  assign uin_hdlc.Rx_Overflow		 = u_dut.Rx_Overflow;
+  assign uin_hdlc.Rx_EoF		 	 = u_dut.Rx_EoF;
+  assign uin_hdlc.Rx_ValidFrame		 = u_dut.Rx_ValidFrame;
+
+
+
 
 
   //Clock

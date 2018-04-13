@@ -9,18 +9,18 @@ z2
 cModel Technology
 Z0 d/home/courses/desdigsys2/2018s/dds218s17/hdlc/Tb
 T_opt
-!s110 1523578806
-V60e11k_GXYG;BcJBOC=ff3
+!s110 1523646231
+VhTNMRj?:n<h=d_<H:hJ]o1
 04 9 4 work test_hdlc fast 0
 04 9 4 work bind_hdlc fast 0
-=1-90b11c1d54d8-5acff7b6-295ab-1f74
+=1-90b11c1d54d8-5ad0ff17-86979-163c
 o-quiet -auto_acc_if_foreign -work work +acc
 Z1 tCvgOpt 0
 n@_opt
 OL;O;10.5c;63
 vAddressIF
 Z2 DXx6 sv_std 3 std 0 22 AD7iAPLo6nTIKk<N0eo=D3
-Z3 !s110 1523578803
+Z3 !s110 1523646229
 !i10b 1
 !s100 om>9?On<K03W7@@f9TGnJ3
 IM^VaPO=ECWoIzf<oSB`jN2
@@ -36,7 +36,7 @@ Z6 OL;L;10.5c;63
 r1
 !s85 0
 31
-Z7 !s108 1523578803.000000
+Z7 !s108 1523646229.000000
 Z8 !s107 ../rtl/TxBuff.sv|../rtl/TxFCS.sv|../rtl/TxChannel.sv|../rtl/TxController.sv|../rtl/RxFCS.sv|../rtl/RxBuff.sv|../rtl/RxChannel.sv|../rtl/RxController.sv|../rtl/AddressIF.sv|../rtl/hdlc.sv|
 Z9 !s90 -sv|../rtl/hdlc.sv|../rtl/AddressIF.sv|../rtl/RxController.sv|../rtl/RxChannel.sv|../rtl/RxBuff.sv|../rtl/RxFCS.sv|../rtl/TxController.sv|../rtl/TxChannel.sv|../rtl/TxFCS.sv|../rtl/TxBuff.sv|+acc|
 !i113 0
@@ -45,15 +45,15 @@ R1
 n@address@i@f
 vassertions_hdlc
 R2
-Z11 !s110 1523578804
+Z11 !s110 1523646230
 !i10b 1
-!s100 KD4;5KRUGbfofjXk=EAFQ3
-IQg5RDR4ThCAjj84PFW[UB3
+!s100 QDdo43RA6cfeCDdM=NT8a0
+ISe_RSeBWKT?N75I6V6>mT2
 R4
 !s105 assertions_hdlc_sv_unit
 S1
 R0
-w1523578800
+w1523645992
 8assertions_hdlc.sv
 Fassertions_hdlc.sv
 L0 7
@@ -61,9 +61,9 @@ R6
 r1
 !s85 0
 31
-Z12 !s108 1523578804.000000
-Z13 !s107 assertions_hdlc.sv|bind_hdlc.sv|testPr_hdlc.sv|test_hdlc.sv|in_hdlc.sv|
-Z14 !s90 -sv|in_hdlc.sv|test_hdlc.sv|testPr_hdlc.sv|bind_hdlc.sv|assertions_hdlc.sv|+acc|
+R7
+Z12 !s107 assertions_hdlc.sv|bind_hdlc.sv|testPr_hdlc.sv|test_hdlc.sv|in_hdlc.sv|
+Z13 !s90 -sv|in_hdlc.sv|test_hdlc.sv|testPr_hdlc.sv|bind_hdlc.sv|assertions_hdlc.sv|+acc|
 !i113 0
 R10
 R1
@@ -71,13 +71,13 @@ vbind_hdlc
 R2
 R11
 !i10b 1
-!s100 2Z_CL2?OTTjMB_M89_aRz3
-IEenNfJ32OT_J@ecNBHo?P1
+!s100 0>Ke9bn5ec:9]T=KTa<I?2
+ISAm];?E5eiOhaT?gE8YbA0
 R4
 !s105 bind_hdlc_sv_unit
 S1
 R0
-w1523544644
+w1523645704
 8bind_hdlc.sv
 Fbind_hdlc.sv
 L0 7
@@ -85,9 +85,9 @@ R6
 r1
 !s85 0
 31
+R7
 R12
 R13
-R14
 !i113 0
 R10
 R1
@@ -118,15 +118,15 @@ R1
 n@hdlc
 Yin_hdlc
 R2
-R11
+R3
 !i10b 1
-!s100 mRdWb047TLd[ZN7B_FJNE2
-Ib<ok>GPFUT<V4ckL8AfAg2
+!s100 F:X=LjO>NTOB:f9BQ>jM23
+IfTgNOK@<I@DHAZ54d_Xez1
 R4
 !s105 in_hdlc_sv_unit
 S1
 R0
-w1523544614
+w1523645706
 8in_hdlc.sv
 Fin_hdlc.sv
 L0 7
@@ -134,9 +134,9 @@ R6
 r1
 !s85 0
 31
+R7
 R12
 R13
-R14
 !i113 0
 R10
 R1
@@ -242,15 +242,15 @@ R1
 n@rx@f@c@s
 vtest_hdlc
 R2
-R11
+R3
 !i10b 1
-!s100 >hM:J]FCjOaMemN0Inb<z1
-I<?Zd0d4RB87hFca]1JM8S0
+!s100 I@HoYFg4^FA?HUH;eJ?kZ1
+I68?B4l9[o>WSdAVSQXzJd2
 R4
 !s105 test_hdlc_sv_unit
 S1
 R0
-w1523544672
+w1523645725
 8test_hdlc.sv
 Ftest_hdlc.sv
 L0 7
@@ -258,23 +258,23 @@ R6
 r1
 !s85 0
 31
+R7
 R12
 R13
-R14
 !i113 0
 R10
 R1
 4testPr_hdlc
 R2
-R11
+R3
 !i10b 1
-!s100 lKnaRg8S5m]G9Q88MhzlW2
-I;o6j2RNejn0ZO37L?oK::0
+!s100 f70fSR[PR>P0:SbfYWWO72
+I<ZFJGkgXmi]>^m^7bJaJj0
 R4
 !s105 testPr_hdlc_sv_unit
 S1
 R0
-w1523578194
+w1523646226
 8testPr_hdlc.sv
 FtestPr_hdlc.sv
 L0 7
@@ -282,16 +282,16 @@ R6
 r1
 !s85 0
 31
+R7
 R12
 R13
-R14
 !i113 0
 R10
 R1
 ntest@pr_hdlc
 vTxBuff
 R2
-R11
+R3
 !i10b 1
 !s100 NY65C2D[[F@SDMVBI5VDd0
 ICa9dEmo]W9b]C=?PSaRR?3
@@ -316,7 +316,7 @@ R1
 n@tx@buff
 vTxChannel
 R2
-R11
+R3
 !i10b 1
 !s100 Ai7=^M6Veoh;zIh0MMK140
 I`6gRT71FXJdjbD0jCm@Pe1
@@ -366,7 +366,7 @@ R1
 n@tx@controller
 vTxFCS
 R2
-R11
+R3
 !i10b 1
 !s100 5SS6AY58]6Og[JFHBT_]43
 I<]>6@K]Vel[M?CAZRa<T42

@@ -100,24 +100,27 @@ program testPr_hdlc(
   task Receive();
     logic [7:0] ReadData;
     logic [7:0] ReadLen;
-    automatic logic [4:0][7:0] shortmessage = '0;
+  automatic logic [4:0][7:0] shortmessage = '0;
+  automatic logic [135:0][7:0] Data = '0;
 
 
    WriteAddress(RX_SC,RX_FCSEN);
 
-    @(posedge uin_hdlc.Clk);
-
+/*
 	Rx_Byte(FLAG);
 	Rx_Byte(ABORT);
-
-
+*/
+	$display("%t New remove zero message ================", $time);
+    uin_hdlc.Rx = 1'b1;
+	    repeat(2)
+	      @(posedge uin_hdlc.Clk);
 	Rx_Byte(FLAG);
 
 /////////////////////////////////
-	//Data
+//Data
 //	Rx_Byte('h2D);
 //	Rx_Byte('h2D);
-	//Checksum
+//Checksum
 //	Rx_Byte('hDD);
 //	Rx_Byte('h4D);
 ////////////////////////////////
@@ -149,11 +152,18 @@ program testPr_hdlc(
 	Rx_Byte('h70);
 	
 	Rx_Byte(FLAG);
-   
-	$display("%t New spesial message ================", $time);
+    uin_hdlc.Rx = 1'b1;
+
+
+	$display("%t New remove zero message ================", $time);
 
 	shortmessage[0] = 'h71;
 	shortmessage[1] = 'h9B;
+
+	//shortmessage[0] = 8'b11111000;
+	//shortmessage[1] = 8'b01001000;
+
+
 	CalculateFCS(shortmessage, 2, {shortmessage[3],shortmessage[2]});
     Rx_Byte(FLAG);
     Rx_multisend(shortmessage,4);
@@ -161,8 +171,19 @@ program testPr_hdlc(
     Rx_Byte(FLAG);
     uin_hdlc.Rx = 1'b1;
 
+	$display("%t New Overflow message ================", $time);
 
-  for (int i = 0; i < 10; i++) begin
+  for (int i = 0; i < 134; i++) begin
+  	Data[i] = $urandom();
+  end
+   Rx_Byte(FLAG);
+   Rx_multisend(Data,130);
+   Rx_Byte(FLAG);
+
+
+
+  //Loop for reciving lots of valid random data
+  for (int i = 0; i < 0; i++) begin
 	    $display("%t New random message ================", $time);
 
 	    Rx_Random();
@@ -184,7 +205,7 @@ program testPr_hdlc(
 
   end
 
-    //uin_hdlc.Rx = 1'b1;
+    uin_hdlc.Rx = 1'b1;
 
     repeat(8)
       @(posedge uin_hdlc.Clk);
@@ -217,7 +238,7 @@ program testPr_hdlc(
   logic [7:0] size;
   logic        [15:0] FCSbytes;
 
-  size = $urandom_range(1, 120);
+  size = $urandom_range(1, 126);
 
   for (int i = 0; i < size; i++) begin
   	Data[i] = $urandom();
@@ -231,7 +252,7 @@ program testPr_hdlc(
   Rx_Byte(FLAG);
   endtask
 
-  task Rx_multisend(input logic [127:0][7:0] data,
+  task Rx_multisend(input logic [132:0][7:0] data,
                        input int             size);
     automatic logic      [4:0] zeroPadding  = '0;
 

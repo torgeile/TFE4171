@@ -38,6 +38,16 @@ interface in_hdlc ();
   logic 	Rx_StartZeroDetect;
   logic 	Rx_NewByte;
   logic [7:0] Rx_Data;
+  logic 	Rx_Overflow;
+  logic 	Rx_EoF;
+  logic 	Rx_ValidFrame;
+
+  
+
+  
+
+
+
 
 
 endinterface
