@@ -41,13 +41,11 @@ interface in_hdlc ();
   logic 	Rx_Overflow;
   logic 	Rx_EoF;
   logic 	Rx_ValidFrame;
+  logic [7:0] Rx_FrameSize;
+  logic [127:0][7:0] Rx_DataArray;
+  logic 	Rx_FrameError;
 
   
-
-  
-
-
-
 
 
 endinterface

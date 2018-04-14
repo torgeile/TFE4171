@@ -19,6 +19,11 @@ module bind_hdlc ();
 	.Rx_Overflow(uin_hdlc.Rx_Overflow),
 	.Rx_EoF(uin_hdlc.Rx_EoF),
 	.Rx_ValidFrame(uin_hdlc.Rx_ValidFrame),
+	.Rx_FrameSize(uin_hdlc.Rx_FrameSize),
+	.Rx_DataArray(uin_hdlc.Rx_DataArray),
+	.Rx_FrameError(uin_hdlc.Rx_FrameError),
+
+	
 
     .Tx_AbortedTrans(uin_hdlc.Tx_AbortedTrans)
   );

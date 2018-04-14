@@ -20,7 +20,9 @@ module test_hdlc ();
   assign uin_hdlc.Rx_Overflow		 = u_dut.Rx_Overflow;
   assign uin_hdlc.Rx_EoF		 	 = u_dut.Rx_EoF;
   assign uin_hdlc.Rx_ValidFrame		 = u_dut.Rx_ValidFrame;
-
+  assign uin_hdlc.Rx_FrameSize		 = u_dut.Rx_FrameSize;
+  assign uin_hdlc.Rx_DataArray		 = u_dut.u_RxBuff.DataArray;
+  assign uin_hdlc.Rx_FrameError		 = u_dut.Rx_FrameError;
 
 
 

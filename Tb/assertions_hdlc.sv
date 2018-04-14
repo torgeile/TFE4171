@@ -17,6 +17,12 @@ module assertions_hdlc (
   input logic Rx_Overflow,
   input logic Rx_EoF,
   input logic Rx_ValidFrame,
+  input logic [7:0]Rx_FrameSize,
+  input logic [127:0][7:0] Rx_DataArray,
+  input logic Rx_FrameError,
+
+
+
 
   input logic Tx_AbortedTrans
   );
@@ -66,7 +72,76 @@ module assertions_hdlc (
    @(posedge Clk) disable iff (!Rst) Rx_flag ##[18:19] Rx_NewByte ##0 Rx_ValidFrame [*1:(128*9)] ##1 !Rx_ValidFrame |-> ##1 Rx_EoF;
   endproperty
 
+  // 14
+  property Receive_FrameSize;
+   int framesize = 1;
+   @(posedge Clk) disable iff (!Rst) Rx_flag ##[18:19] Rx_NewByte ##0 (##[7:9] (Rx_NewByte, framesize++)) [*1:128] ##0 Rx_FlagDetect  |-> ##6 (framesize-2==Rx_FrameSize);
+  endproperty
 
+  // 1
+  property Receive_Buffer;
+  logic [127:0] [7:0] tempBuffer = '0;
+  int framesize = 0;
+   @(posedge Clk) disable iff (!Rst) Rx_flag ##[18:19] Rx_NewByte ##0 (##[7:9] (Rx_NewByte,tempBuffer[framesize]=Rx_Data, framesize++)) [*1:128] ##0 Rx_FlagDetect  
+   |-> ##6 (1,tempBuffer[framesize]=Rx_Data, framesize++) ##0 compareArray(tempBuffer,Rx_DataArray,framesize);
+  endproperty
+
+
+  //11 c
+  property Receive_CRC;
+  logic [127:0] [7:0] tempBuffer = '0;
+  int framesize = 0;
+   @(posedge Clk) disable iff (!Rst) Rx_flag ##[18:19] Rx_NewByte ##0 (##[7:9] (Rx_NewByte,tempBuffer[framesize]=Rx_Data, framesize++)) [*1:128] ##0 Rx_FlagDetect  
+   |-> ##2 (1,tempBuffer[framesize]=Rx_Data, framesize++) ##0 (Rx_FrameError== !checkCRC(tempBuffer,framesize));
+  endproperty
+
+
+function automatic logic checkCRC([127:0] [7:0] arrayA, int size);
+automatic logic noError = 1'b1;
+    logic [15:0] tempCRC;
+    logic [23:0] tempStore;
+
+	tempCRC = {arrayA[size-1],arrayA[size-2]};
+	arrayA[size-1] = '0;
+	arrayA[size-2] = '0;
+
+    tempStore[7:0]  = arrayA[0];
+    tempStore[15:8] = arrayA[1];
+
+    for (int i = 2; i < size; i++) begin
+      tempStore[23:16] = arrayA[i];
+      for (int j = 0; j < 8; j++) begin
+        tempStore[16] = tempStore[16] ^ tempStore[0];
+        tempStore[14] = tempStore[14] ^ tempStore[0];
+        tempStore[1]  = tempStore[1]  ^ tempStore[0];
+        tempStore[0]  = tempStore[0]  ^ tempStore[0];
+        tempStore = tempStore >> 1;
+      end
+    end
+    $display("time = %t", $time);
+
+    $display("tempCRC =%h", arrayA[10:0]);
+
+    $display("tempCRC =%h", tempCRC);
+    $display("calcCRC =%h", tempStore[15:0]);
+
+
+   return (tempCRC == tempStore[15:0]);
+endfunction
+
+
+function automatic logic compareArray([127:0] [7:0] arrayA, [127:0] [7:0] arrayB, int length);
+automatic logic noError = 1'b1;
+
+    for (int i = 0; i < length; i++) begin
+    	if (arrayA[i] != arrayB[i]) begin
+    		noError = 1'b0;
+    	end 
+        //$display("Rx_Data =%h", arrayA[i]);
+
+    end
+   return noError;
+endfunction
 
 
 function automatic logic[7:0] Zeroremove(logic [14:0] InData);
@@ -100,6 +175,18 @@ automatic   logic  skipnext = 0;
    return (tempdata[15:8]);
   endfunction
 
+
+  Receive_CRC_Assert    	    :  assert property (Receive_CRC) $display("PASS: Receive_CRC");
+	                       		else begin $error("Rx CRC error"); ErrCntAssertions++; end
+
+    Receive_Buffer_Assert    	    :  assert property (Receive_Buffer) $display("PASS: Receive_Buffer");
+	                       		else begin $error("Rx buffer error"); ErrCntAssertions++; end
+
+
+	Receive_FrameSize_Assert    	    :  assert property (Receive_FrameSize) $display("PASS: Receive_FrameSize");
+	                       		else begin $error("Rx framesize error"); ErrCntAssertions++; end
+
+
   Rx_Overflow_Assert    	    :  assert property (Rx_Overflowed) $display("PASS: Rx_Overflowed");
                            		else begin $error("Rx overflow error"); ErrCntAssertions++; end
 
@@ -111,7 +198,7 @@ automatic   logic  skipnext = 0;
 
   Receive_RemoveZero_Assert    	:  assert property (Receive_RemoveZero) $display("PASS: Receive_RemoveZero");
                            		else begin $error("Extra zero was not removed zero?"); ErrCntAssertions++; end
-                           			
+
   Rx_Endoffile_Assert    	    :  assert property (Rx_Endoffile) $display("PASS: Rx_EoF");
                            		else begin $error("Rx EoF error"); ErrCntAssertions++; end
 

@@ -101,7 +101,6 @@ program testPr_hdlc(
     logic [7:0] ReadData;
     logic [7:0] ReadLen;
   automatic logic [4:0][7:0] shortmessage = '0;
-  automatic logic [135:0][7:0] Data = '0;
 
 
    WriteAddress(RX_SC,RX_FCSEN);
@@ -154,7 +153,6 @@ program testPr_hdlc(
 	Rx_Byte(FLAG);
     uin_hdlc.Rx = 1'b1;
 
-
 	$display("%t New remove zero message ================", $time);
 
 	shortmessage[0] = 'h71;
@@ -171,19 +169,24 @@ program testPr_hdlc(
     Rx_Byte(FLAG);
     uin_hdlc.Rx = 1'b1;
 
-	$display("%t New Overflow message ================", $time);
 
-  for (int i = 0; i < 134; i++) begin
-  	Data[i] = $urandom();
-  end
-   Rx_Byte(FLAG);
-   Rx_multisend(Data,130);
-   Rx_Byte(FLAG);
+	$display("%t New CRC error message ================", $time);
 
+	shortmessage[0] = 'h11;
+	shortmessage[1] = 'h44;
+	shortmessage[2] = 'h01;
+	shortmessage[3] = 'h22;
 
+    Rx_Byte(FLAG);
+    Rx_multisend(shortmessage,4);
+
+    Rx_Byte(FLAG);
+    uin_hdlc.Rx = 1'b1;
+
+    //Rx_sendoverflow();
 
   //Loop for reciving lots of valid random data
-  for (int i = 0; i < 0; i++) begin
+  for (int i = 0; i < 1000; i++) begin
 	    $display("%t New random message ================", $time);
 
 	    Rx_Random();
@@ -271,6 +274,20 @@ program testPr_hdlc(
       end
     end
   endtask
+
+  task Rx_sendoverflow();
+  automatic logic [135:0][7:0] Data = '0;
+
+	$display("%t New Overflow message ================", $time);
+
+  for (int i = 0; i < 134; i++) begin
+  	Data[i] = $urandom();
+  end
+   Rx_Byte(FLAG);
+   Rx_multisend(Data,130);
+   Rx_Byte(FLAG);
+  endtask
+
 
   task CalculateFCS(input  logic [127:0][7:0]  data, 
                     input  logic [7:0]         size, 
