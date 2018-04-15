@@ -22,12 +22,19 @@ module assertions_hdlc (
   input logic Rx_FrameError,
   input logic Rx_FCSen,
   input logic [7:0]Rx_DataBuffOut,
-  input logic [7:0]Rx_AbortSignal,
+  input logic Rx_AbortSignal,
+  input logic Rx_Ready,
+  input logic Rx_FCSerr,
+
+
+
 
   input logic Tx_AbortedTrans,
 
   input logic [2:0] Address,
-  input logic ReadEnable
+  input logic ReadEnable,
+  input logic [7:0]DataOut
+
 
   );
 
@@ -43,7 +50,7 @@ module assertions_hdlc (
 
   // 
   property Receive_FlagDetect;
-    @(posedge Clk) disable iff (!Rst) Rx_flag |-> ##2 Rx_FlagDetect;
+    @(posedge Clk) disable iff (!Rst) Rx_flag |-> ##2 $rose(Rx_FlagDetect);
   endproperty
 
 
@@ -53,7 +60,7 @@ module assertions_hdlc (
 
   //10
   property Receive_AbortDetect;
-    @(posedge Clk) disable iff (!Rst || !Rx_ValidFrame) Rx_abort |-> ##1 Rx_AbortDetect;
+     @(posedge Clk) disable iff (!Rst || !Rx_ValidFrame) Rx_abort |-> ##1 $rose(Rx_AbortDetect);
   endproperty
 
 
@@ -71,12 +78,12 @@ module assertions_hdlc (
 
   // 13
   property Rx_Overflowed;
-   @(posedge Clk) disable iff (!Rst) Rx_NewByte ##0 (##[7:9] Rx_NewByte) [*128] |-> ##1 Rx_Overflow;
+   @(posedge Clk) disable iff (!Rst)  Rx_flag ##[18:19] Rx_NewByte ##0 (##[7:9] Rx_NewByte) [*128] |-> ##1 $rose(Rx_Overflow);
   endproperty
 
   //12
   property Rx_Endoffile;
-   @(posedge Clk) disable iff (!Rst) Rx_flag ##[18:19] Rx_NewByte ##0 Rx_ValidFrame [*1:(128*9)] ##1 !Rx_ValidFrame |-> ##1 Rx_EoF;
+   @(posedge Clk) disable iff (!Rst) Rx_flag ##[18:19] Rx_NewByte ##0 Rx_ValidFrame [*1:$] ##1 !Rx_ValidFrame |-> ##1 $rose(Rx_EoF);
   endproperty
 
 
@@ -101,20 +108,43 @@ module assertions_hdlc (
   logic [127:0] [7:0] tempBuffer = '0;
   int framesize = 0;
    @(posedge Clk) disable iff (!Rst) Rx_flag ##[18:19] Rx_NewByte ##0 (##[7:9] (Rx_NewByte,tempBuffer[framesize]=Rx_Data, framesize++)) [*1:128] ##0 Rx_FlagDetect  
-   |-> ##6 (1,tempBuffer[framesize]=Rx_Data, framesize++) ##0 (Rx_FrameError== !checkCRC(tempBuffer,framesize,Rx_FCSen));
+   |-> ##6 (1,tempBuffer[framesize]=Rx_Data, framesize++) ##0 (Rx_FrameError == !checkCRC(tempBuffer,framesize,Rx_FCSen));
   endproperty
 
-
+  //16
   property Receive_NonAligned;
-   @(posedge Clk) disable iff (!Rst)  Rx_NewByte ##[1:7] Rx_FlagDetect  
-   |-> ##2 Rx_FrameError;
+   @(posedge Clk) disable iff (!Rst)  Rx_NewByte ##[1:7] Rx_FlagDetect
+   |-> ##2 $rose(Rx_FrameError);
   endproperty
 
 
   //2
   property Receive_ReadAfterError;
-   @(posedge Clk) disable iff (!Rst) (Rx_FrameError || Rx_Overflow || Rx_AbortSignal) && Address==RX_BUFF && ReadEnable  |-> ##1 (Rx_DataBuffOut == '0);
+    @(posedge Clk) disable iff (!Rst) (Rx_FrameError || Rx_Overflow || Rx_AbortSignal) && Address==RX_BUFF && ReadEnable  |-> ##0 (DataOut == '0);
   endproperty
+
+
+  //15 //Mulig denne er for dårlig
+  property Receive_ReadyValid;
+    @(posedge Clk) disable iff (!Rst) Rx_Ready |-> !(Rx_FrameError || Rx_Overflow || Rx_AbortSignal);
+  endproperty
+
+
+
+	//3 (disse er gyldige siden Rx_FrameError,Rx_AbortDetect og Rx_Overflow er sjekket andre steder)
+  property Receive_FrameError_reg;
+   @(posedge Clk) disable iff (!Rst) $rose(Rx_FrameError) |-> ##1 Rx_FrameError until_with first_match(##[0:$] Rx_FlagDetect) ##1 !Rx_FrameError;
+  endproperty
+
+  property Receive_Abort_reg;
+    @(posedge Clk) disable iff (!Rst) $rose(Rx_AbortDetect && Rx_ValidFrame) |-> ##1 Rx_AbortSignal until_with first_match(##[0:$] Rx_FlagDetect) ##1 !Rx_AbortSignal;
+  endproperty
+
+  property Receive_Overflowed_reg;
+   @(posedge Clk) disable iff (!Rst) $rose(Rx_Overflow) |-> ##1 Rx_Overflow until_with first_match(##[0:$] Rx_FlagDetect) ##1 !Rx_Overflow;
+  endproperty
+
+
 
 
 
@@ -205,7 +235,19 @@ automatic   logic  skipnext = 0;
    return (tempdata[15:8]);
   endfunction
 
-  Receive_ReadAfterError_Assert  :  assert property (Receive_ReadAfterError) $display("PASS: Receive_ReadAfterError");
+   Receive_FCSerr_reg_Assert  :  assert property (Receive_FrameError_reg) $display("PASS: Receive_FrameError_reg");
+	                       		else begin $error("Rx FrameError not set in reg"); ErrCntAssertions++; end
+  Receive_Abort_reg_Assert  :  assert property (Receive_Abort_reg) $display("PASS: Receive_Abort_reg");
+	                       		else begin $error("Rx Abort not set in reg"); ErrCntAssertions++; end
+  Receive_Overflowed_reg_Assert  :  assert property (Receive_Overflowed_reg) $display("PASS: Receive_Overflowed_reg");
+	                       		else begin $error("Rx Overflowed not set in reg"); ErrCntAssertions++; end
+
+
+  Receive_ReadyValid_Assert  :  assert property (Receive_ReadyValid) /* $display("PASS: Receive_ReadyValid") ;*/
+	                       		else begin $error("Rx ready not indicating ready data"); ErrCntAssertions++; end
+
+
+  Receive_ReadAfterError_Assert  :  assert property (Receive_ReadAfterError)/* $display("PASS: Receive_ReadAfterError"); */
 	                       		else begin $error("Rx Read after error error"); ErrCntAssertions++; end
 
 

@@ -105,6 +105,11 @@ program testPr_hdlc(
 
    WriteAddress(RX_SC,RX_FCSEN);
 
+	//Rx_Byte(FLAG);
+	//Rx_Byte('h2D);
+
+	//Rx_Byte(ABORT);
+
 
 	$display("%t New remove zero message ================", $time);
     uin_hdlc.Rx = 1'b1;
@@ -171,9 +176,9 @@ program testPr_hdlc(
 
 	    repeat(15)
 	      @(posedge uin_hdlc.Clk);
-//Rx_sendCRCerror();
+Rx_sendCRCerror();
 
-//Rx_sendoverflow();
+Rx_sendoverflow();
 Rx_sendNonAligned();
 
 /*

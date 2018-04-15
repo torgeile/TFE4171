@@ -27,6 +27,9 @@ module bind_hdlc ();
 	.Address(uin_hdlc.Address),
 	.ReadEnable(uin_hdlc.ReadEnable),
 	.Rx_AbortSignal(uin_hdlc.Rx_AbortSignal),
+	.DataOut(uin_hdlc.DataOut),
+	.Rx_Ready(uin_hdlc.Rx_Ready),
+	.Rx_FCSerr(uin_hdlc.Rx_FCSerr),
 
 
 	
