@@ -23,6 +23,8 @@ module test_hdlc ();
   assign uin_hdlc.Rx_FrameSize		 = u_dut.Rx_FrameSize;
   assign uin_hdlc.Rx_DataArray		 = u_dut.u_RxBuff.DataArray;
   assign uin_hdlc.Rx_FrameError		 = u_dut.Rx_FrameError;
+  assign uin_hdlc.Rx_FCSen		 	 = u_dut.Rx_FCSen;
+  assign uin_hdlc.Rx_DataBuffOut	 = u_dut.Rx_DataBuffOut;
 
 
 

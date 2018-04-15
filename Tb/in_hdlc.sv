@@ -44,8 +44,11 @@ interface in_hdlc ();
   logic [7:0] Rx_FrameSize;
   logic [127:0][7:0] Rx_DataArray;
   logic 	Rx_FrameError;
+  logic 	Rx_FCSen;
+  logic 	[7:0] Rx_DataBuffOut;
 
-  
+
+
 
 
 endinterface

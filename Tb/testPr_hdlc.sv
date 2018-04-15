@@ -105,10 +105,7 @@ program testPr_hdlc(
 
    WriteAddress(RX_SC,RX_FCSEN);
 
-/*
-	Rx_Byte(FLAG);
-	Rx_Byte(ABORT);
-*/
+
 	$display("%t New remove zero message ================", $time);
     uin_hdlc.Rx = 1'b1;
 	    repeat(2)
@@ -145,6 +142,7 @@ program testPr_hdlc(
     @(posedge uin_hdlc.Clk);
     uin_hdlc.Rx = 1'b0;
     @(posedge uin_hdlc.Clk);
+   // WriteAddress(RX_SC,RX_DROP);
 
 	//Checksum
 	Rx_Byte('h9D);
@@ -152,6 +150,8 @@ program testPr_hdlc(
 	
 	Rx_Byte(FLAG);
     uin_hdlc.Rx = 1'b1;
+	    repeat(18)
+	      @(posedge uin_hdlc.Clk);
 
 	$display("%t New remove zero message ================", $time);
 
@@ -165,34 +165,44 @@ program testPr_hdlc(
 	CalculateFCS(shortmessage, 2, {shortmessage[3],shortmessage[2]});
     Rx_Byte(FLAG);
     Rx_multisend(shortmessage,4);
-
     Rx_Byte(FLAG);
     uin_hdlc.Rx = 1'b1;
 
 
-	$display("%t New CRC error message ================", $time);
+	    repeat(15)
+	      @(posedge uin_hdlc.Clk);
+//Rx_sendCRCerror();
 
-	shortmessage[0] = 'h11;
-	shortmessage[1] = 'h44;
-	shortmessage[2] = 'h01;
-	shortmessage[3] = 'h22;
+//Rx_sendoverflow();
+Rx_sendNonAligned();
+
+/*
+	$display("%t New Aborted message ================", $time);
+
+	shortmessage[0] = 'h00;
+	shortmessage[1] = 'h00;
+
 
     Rx_Byte(FLAG);
-    Rx_multisend(shortmessage,4);
+    Rx_multisend(shortmessage,2);
+	Rx_Byte(ABORT);
 
-    Rx_Byte(FLAG);
     uin_hdlc.Rx = 1'b1;
+	    repeat(10)
+	      @(posedge uin_hdlc.Clk);
 
-    //Rx_sendoverflow();
+	    ReadAddress(RX_SC, ReadData);
+	    $display("Rx_SC=%b", ReadData);
+*/
 
   //Loop for reciving lots of valid random data
-  for (int i = 0; i < 1000; i++) begin
+  for (int i = 0; i < 1; i++) begin
 	    $display("%t New random message ================", $time);
 
-	    Rx_Random();
+	    Rx_sendRandom();
 	    uin_hdlc.Rx = 1'b1;
 
-	    repeat(8)
+	    repeat(10)
 	      @(posedge uin_hdlc.Clk);
 
 	    ReadAddress(RX_SC, ReadData);
@@ -210,7 +220,7 @@ program testPr_hdlc(
 
     uin_hdlc.Rx = 1'b1;
 
-    repeat(8)
+    repeat(16)
       @(posedge uin_hdlc.Clk);
     ReadAddress(RX_SC, ReadData);
     $display("Rx_SC=%b", ReadData);
@@ -236,7 +246,7 @@ program testPr_hdlc(
   end
   endtask
 
-  task Rx_Random();
+  task Rx_sendRandom();
   automatic logic [127:0][7:0] Data = '0;
   logic [7:0] size;
   logic        [15:0] FCSbytes;
@@ -277,6 +287,8 @@ program testPr_hdlc(
 
   task Rx_sendoverflow();
   automatic logic [135:0][7:0] Data = '0;
+    logic [7:0] ReadData;
+    logic [7:0] ReadLen;
 
 	$display("%t New Overflow message ================", $time);
 
@@ -286,6 +298,86 @@ program testPr_hdlc(
    Rx_Byte(FLAG);
    Rx_multisend(Data,130);
    Rx_Byte(FLAG);
+	    uin_hdlc.Rx = 1'b1;
+
+	    repeat(10)
+	      @(posedge uin_hdlc.Clk);
+
+	    ReadAddress(RX_SC, ReadData);
+	    $display("Rx_SC=%b", ReadData);
+
+
+	    ReadAddress(RX_LEN , ReadLen);
+	    $display("Rx_Len=%d", ReadLen);
+
+  endtask
+
+  task Rx_sendCRCerror();
+   automatic logic [4:0][7:0] shortmessage = '0;
+    logic [7:0] ReadData;
+    logic [7:0] ReadLen;
+
+	$display("%t New CRC error message ================", $time);
+
+	shortmessage[0] = 'h11;
+	shortmessage[1] = 'h44;
+	shortmessage[2] = 'h01;
+	shortmessage[3] = 'h22;
+
+    Rx_Byte(FLAG);
+    Rx_multisend(shortmessage,4);
+
+    Rx_Byte(FLAG);
+    uin_hdlc.Rx = 1'b1;
+
+	    repeat(10)
+	      @(posedge uin_hdlc.Clk);
+
+	    ReadAddress(RX_SC, ReadData);
+	    $display("Rx_SC=%b", ReadData);
+
+
+	    ReadAddress(RX_LEN , ReadLen);
+	    $display("Rx_Len=%d", ReadLen);
+
+  endtask
+
+  task Rx_sendNonAligned();
+   automatic logic [4:0][7:0] shortmessage = '0;
+    logic [7:0] ReadData;
+    logic [7:0] ReadLen;
+
+	$display("%t New non aligned message ================", $time);
+
+	shortmessage[0] = 'h11;
+	shortmessage[1] = 'h44;
+	shortmessage[2] = 'h01;
+	shortmessage[3] = 'h22;
+
+    Rx_Byte(FLAG);
+    Rx_multisend(shortmessage,4);
+    uin_hdlc.Rx = 1'b0;
+	repeat(4)
+		@(posedge uin_hdlc.Clk);
+	uin_hdlc.Rx = 1'b1;
+		@(posedge uin_hdlc.Clk);
+    uin_hdlc.Rx = 1'b0;
+	repeat(2)
+		@(posedge uin_hdlc.Clk);
+
+    Rx_Byte(FLAG);
+    uin_hdlc.Rx = 1'b1;
+
+	    repeat(10)
+	      @(posedge uin_hdlc.Clk);
+
+	    ReadAddress(RX_SC, ReadData);
+	    $display("Rx_SC=%b", ReadData);
+
+
+	    ReadAddress(RX_LEN , ReadLen);
+	    $display("Rx_Len=%d", ReadLen);
+
   endtask
 
 

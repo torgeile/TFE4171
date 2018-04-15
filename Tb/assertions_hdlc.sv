@@ -20,9 +20,8 @@ module assertions_hdlc (
   input logic [7:0]Rx_FrameSize,
   input logic [127:0][7:0] Rx_DataArray,
   input logic Rx_FrameError,
-
-
-
+  input logic Rx_FCSen,
+  input logic [7:0]Rx_DataBuffOut,
 
   input logic Tx_AbortedTrans
   );
@@ -43,13 +42,14 @@ module assertions_hdlc (
 
 
   sequence Rx_abort;
-    !Rx ##1 Rx [*7] ##1 !Rx;
+     Rx [*7] ##1 !Rx;
   endsequence
 
   //10
   property Receive_AbortDetect;
-    @(posedge Clk) disable iff (!Rst) Rx_abort |-> ##1 Rx_AbortDetect;
+    @(posedge Clk) disable iff (!Rst || !Rx_ValidFrame) Rx_abort |-> ##1 Rx_AbortDetect;
   endproperty
+
 
   sequence Rx_Zero;
     !Rx ##1 Rx [*5] ##1 !Rx;
@@ -57,7 +57,8 @@ module assertions_hdlc (
 
   // (6)B
   property Receive_RemoveZero;
-    @(posedge Clk) disable iff (!Rst) Rx_Zero |-> first_match(##[9:19]Rx_NewByte)  ##1 (Rx_Data==Zeroremove({$past(Rx,25),$past(Rx,24),$past(Rx,23),$past(Rx,22),$past(Rx,21),$past(Rx,20),$past(Rx,19),$past(Rx,18),$past(Rx,17),$past(Rx,16),$past(Rx,15),$past(Rx,14),$past(Rx,13),$past(Rx,12),$past(Rx,11)}));
+    @(posedge Clk) disable iff (!Rst) Rx_Zero |-> first_match(##[9:19]Rx_NewByte)  ##1 
+    (Rx_Data==Zeroremove({$past(Rx,25),$past(Rx,24),$past(Rx,23),$past(Rx,22),$past(Rx,21),$past(Rx,20),$past(Rx,19),$past(Rx,18),$past(Rx,17),$past(Rx,16),$past(Rx,15),$past(Rx,14),$past(Rx,13),$past(Rx,12),$past(Rx,11)}));
   endproperty
 
 
@@ -72,10 +73,12 @@ module assertions_hdlc (
    @(posedge Clk) disable iff (!Rst) Rx_flag ##[18:19] Rx_NewByte ##0 Rx_ValidFrame [*1:(128*9)] ##1 !Rx_ValidFrame |-> ##1 Rx_EoF;
   endproperty
 
+
   // 14
   property Receive_FrameSize;
    int framesize = 1;
-   @(posedge Clk) disable iff (!Rst) Rx_flag ##[18:19] Rx_NewByte ##0 (##[7:9] (Rx_NewByte, framesize++)) [*1:128] ##0 Rx_FlagDetect  |-> ##6 (framesize-2==Rx_FrameSize);
+   @(posedge Clk) disable iff (!Rst) Rx_flag ##[18:19] Rx_NewByte ##0 (##[7:9] (Rx_NewByte, framesize++)) [*1:128]  ##0 Rx_FlagDetect
+   |-> ##6 (framesize-2==Rx_FrameSize);
   endproperty
 
   // 1
@@ -87,16 +90,42 @@ module assertions_hdlc (
   endproperty
 
 
-  //11 c
+  //11 B
   property Receive_CRC;
   logic [127:0] [7:0] tempBuffer = '0;
   int framesize = 0;
    @(posedge Clk) disable iff (!Rst) Rx_flag ##[18:19] Rx_NewByte ##0 (##[7:9] (Rx_NewByte,tempBuffer[framesize]=Rx_Data, framesize++)) [*1:128] ##0 Rx_FlagDetect  
-   |-> ##2 (1,tempBuffer[framesize]=Rx_Data, framesize++) ##0 (Rx_FrameError== !checkCRC(tempBuffer,framesize));
+   |-> ##6 (1,tempBuffer[framesize]=Rx_Data, framesize++) ##0 (Rx_FrameError== !checkCRC(tempBuffer,framesize,Rx_FCSen));
   endproperty
 
 
-function automatic logic checkCRC([127:0] [7:0] arrayA, int size);
+
+
+
+  property Receive_NonAligned;
+   @(posedge Clk) disable iff (!Rst)  Rx_NewByte ##[1:7] Rx_FlagDetect  
+   |-> ##2 Rx_FrameError;
+  endproperty
+
+
+
+
+
+
+
+
+
+/*
+  //2
+  property Receive_ReadAfterError;
+   @(posedge Clk) disable iff (!Rst) ;
+  endproperty
+
+  Receive_ReadAfterError_Assert    	    :  assert property (Receive_ReadAfterError) $display("PASS: Receive_ReadAfterError");
+	                       		else begin $error("Rx Read after error error"); ErrCntAssertions++; end
+*/
+
+function automatic logic checkCRC([127:0] [7:0] arrayA, int size, logic Rx_FCSen);
 automatic logic noError = 1'b1;
     logic [15:0] tempCRC;
     logic [23:0] tempStore;
@@ -118,15 +147,23 @@ automatic logic noError = 1'b1;
         tempStore = tempStore >> 1;
       end
     end
-    $display("time = %t", $time);
+//    $display("time = %t", $time);
 
-    $display("tempCRC =%h", arrayA[10:0]);
+//    $display("InArray =%h", arrayA[10:0]);
 
-    $display("tempCRC =%h", tempCRC);
-    $display("calcCRC =%h", tempStore[15:0]);
+//    $display("tempCRC =%h", tempCRC);
+//    $display("calcCRC =%h", tempStore[15:0]);
 
+   if (Rx_FCSen) begin
+//    $display("Return =%b", tempCRC == tempStore[15:0]);
 
-   return (tempCRC == tempStore[15:0]);
+   	return (tempCRC == tempStore[15:0]);
+
+   end else begin
+//    $display("Return force = 1");
+
+   	return 1'b1;
+   end
 endfunction
 
 
@@ -171,19 +208,25 @@ automatic   logic  skipnext = 0;
     	end
     end
 //$display("InData  =%b %h", InData, InData);
-//$display("tempdata=%b %h", tempdata[15:8],tempdata[15:8]);
+//$display("tempdata=%b %h", tempdata[return15:8],tempdata[15:8]);
    return (tempdata[15:8]);
   endfunction
+  
+  Receive_NonAligned_Assert    :  assert property (Receive_NonAligned) $display("PASS: Receive_NonAligned");
+                                  else begin $error("Non aligen data not detected"); ErrCntAssertions++; end
 
+
+  Receive_AbortDetect_Assert    :  assert property (Receive_AbortDetect) $display("PASS: Receive_AbortDetect");
+                                  else begin $error("Abort sequence did not generate AbortDetect"); ErrCntAssertions++; end
 
   Receive_CRC_Assert    	    :  assert property (Receive_CRC) $display("PASS: Receive_CRC");
 	                       		else begin $error("Rx CRC error"); ErrCntAssertions++; end
 
-    Receive_Buffer_Assert    	    :  assert property (Receive_Buffer) $display("PASS: Receive_Buffer");
+  Receive_Buffer_Assert    	    :  assert property (Receive_Buffer) $display("PASS: Receive_Buffer");
 	                       		else begin $error("Rx buffer error"); ErrCntAssertions++; end
 
 
-	Receive_FrameSize_Assert    	    :  assert property (Receive_FrameSize) $display("PASS: Receive_FrameSize");
+  Receive_FrameSize_Assert    	    :  assert property (Receive_FrameSize) $display("PASS: Receive_FrameSize");
 	                       		else begin $error("Rx framesize error"); ErrCntAssertions++; end
 
 
@@ -193,8 +236,6 @@ automatic   logic  skipnext = 0;
   Receive_FlagDetect_Assert     :  assert property (Receive_FlagDetect) $display("PASS: Receive_FlagDetect");
                                   else begin $error("Flag sequence did not generate FlagDetect"); ErrCntAssertions++; end
 
-  Receive_AbortDetect_Assert    :  assert property (Receive_AbortDetect) $display("PASS: Receive_AbortDetect");
-                                  else begin $error("Abort sequence did not generate AbortDetect"); ErrCntAssertions++; end
 
   Receive_RemoveZero_Assert    	:  assert property (Receive_RemoveZero) $display("PASS: Receive_RemoveZero");
                            		else begin $error("Extra zero was not removed zero?"); ErrCntAssertions++; end

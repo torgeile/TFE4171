@@ -22,6 +22,10 @@ module bind_hdlc ();
 	.Rx_FrameSize(uin_hdlc.Rx_FrameSize),
 	.Rx_DataArray(uin_hdlc.Rx_DataArray),
 	.Rx_FrameError(uin_hdlc.Rx_FrameError),
+	.Rx_FCSen(uin_hdlc.Rx_FCSen),
+	.Rx_DataBuffOut(uin_hdlc.Rx_DataBuffOut),
+
+
 
 	
 
