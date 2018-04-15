@@ -378,6 +378,11 @@ Rx_sendNonAligned();
 	    ReadAddress(RX_LEN , ReadLen);
 	    $display("Rx_Len=%d", ReadLen);
 
+      for (int i = 0; i < ReadLen; i++) begin
+   		ReadAddress(RX_BUFF , ReadData);
+	  end
+
+
   endtask
 
 

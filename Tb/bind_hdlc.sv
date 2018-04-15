@@ -24,7 +24,9 @@ module bind_hdlc ();
 	.Rx_FrameError(uin_hdlc.Rx_FrameError),
 	.Rx_FCSen(uin_hdlc.Rx_FCSen),
 	.Rx_DataBuffOut(uin_hdlc.Rx_DataBuffOut),
-
+	.Address(uin_hdlc.Address),
+	.ReadEnable(uin_hdlc.ReadEnable),
+	.Rx_AbortSignal(uin_hdlc.Rx_AbortSignal),
 
 
 	

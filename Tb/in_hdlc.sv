@@ -46,6 +46,7 @@ interface in_hdlc ();
   logic 	Rx_FrameError;
   logic 	Rx_FCSen;
   logic 	[7:0] Rx_DataBuffOut;
+  logic 	Rx_AbortSignal;
 
 
 

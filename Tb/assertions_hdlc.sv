@@ -22,10 +22,16 @@ module assertions_hdlc (
   input logic Rx_FrameError,
   input logic Rx_FCSen,
   input logic [7:0]Rx_DataBuffOut,
+  input logic [7:0]Rx_AbortSignal,
 
-  input logic Tx_AbortedTrans
+  input logic Tx_AbortedTrans,
+
+  input logic [2:0] Address,
+  input logic ReadEnable
+
   );
 
+  parameter RX_BUFF = 3'b011;
 
   initial begin
     ErrCntAssertions = 0;
@@ -99,31 +105,18 @@ module assertions_hdlc (
   endproperty
 
 
-
-
-
   property Receive_NonAligned;
    @(posedge Clk) disable iff (!Rst)  Rx_NewByte ##[1:7] Rx_FlagDetect  
    |-> ##2 Rx_FrameError;
   endproperty
 
 
-
-
-
-
-
-
-
-/*
   //2
   property Receive_ReadAfterError;
-   @(posedge Clk) disable iff (!Rst) ;
+   @(posedge Clk) disable iff (!Rst) (Rx_FrameError || Rx_Overflow || Rx_AbortSignal) && Address==RX_BUFF && ReadEnable  |-> ##1 (Rx_DataBuffOut == '0);
   endproperty
 
-  Receive_ReadAfterError_Assert    	    :  assert property (Receive_ReadAfterError) $display("PASS: Receive_ReadAfterError");
-	                       		else begin $error("Rx Read after error error"); ErrCntAssertions++; end
-*/
+
 
 function automatic logic checkCRC([127:0] [7:0] arrayA, int size, logic Rx_FCSen);
 automatic logic noError = 1'b1;
@@ -211,7 +204,11 @@ automatic   logic  skipnext = 0;
 //$display("tempdata=%b %h", tempdata[return15:8],tempdata[15:8]);
    return (tempdata[15:8]);
   endfunction
-  
+
+  Receive_ReadAfterError_Assert  :  assert property (Receive_ReadAfterError) $display("PASS: Receive_ReadAfterError");
+	                       		else begin $error("Rx Read after error error"); ErrCntAssertions++; end
+
+
   Receive_NonAligned_Assert    :  assert property (Receive_NonAligned) $display("PASS: Receive_NonAligned");
                                   else begin $error("Non aligen data not detected"); ErrCntAssertions++; end
 

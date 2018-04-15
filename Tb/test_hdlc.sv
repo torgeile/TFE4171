@@ -25,6 +25,7 @@ module test_hdlc ();
   assign uin_hdlc.Rx_FrameError		 = u_dut.Rx_FrameError;
   assign uin_hdlc.Rx_FCSen		 	 = u_dut.Rx_FCSen;
   assign uin_hdlc.Rx_DataBuffOut	 = u_dut.Rx_DataBuffOut;
+  assign uin_hdlc.Rx_AbortSignal	 = u_dut.Rx_AbortSignal;
 
 
 
