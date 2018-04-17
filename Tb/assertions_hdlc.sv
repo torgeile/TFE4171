@@ -30,10 +30,23 @@ module assertions_hdlc (
 
 
   input logic Tx_AbortedTrans,
+  input logic Tx,
+  input logic Tx_Done,
+  input logic Tx_Full,
+  input logic Tx_FCSDone,
+  input logic Tx_AbortFrame,
+  input logic Tx_NewByte,
+  input logic Tx_Enable,
+  input logic Tx_ValidFrame,
+  input logic [7:0]Tx_FrameSize,
+  input logic Tx_RdBuff,
+
 
   input logic [2:0] Address,
   input logic ReadEnable,
-  input logic [7:0]DataOut
+  input logic WriteEnable,
+  input logic [7:0]DataOut,
+  input logic [7:0]DataIn
 
 
   );
@@ -54,7 +67,7 @@ module assertions_hdlc (
   endproperty
 
 
-  sequence Rx_abort;
+  sequence Rx_abort; //TODO: Denne er feil, test med den riktige:   !Rx ##1 Rx [*7]
      Rx [*7] ##1 !Rx;
   endsequence
 
@@ -94,7 +107,7 @@ module assertions_hdlc (
    |-> ##6 (framesize-2==Rx_FrameSize);
   endproperty
 
-  // 1
+  // 1 //Stemmer pga. 6.B
   property Receive_Buffer;
   logic [127:0] [7:0] tempBuffer = '0;
   int framesize = 0;
@@ -120,11 +133,11 @@ module assertions_hdlc (
 
   //2
   property Receive_ReadAfterError;
-    @(posedge Clk) disable iff (!Rst) (Rx_FrameError || Rx_Overflow || Rx_AbortSignal) && Address==RX_BUFF && ReadEnable  |-> ##0 (DataOut == '0);
+    @(posedge Clk) disable iff (!Rst) (Rx_FrameError || Rx_Overflow || Rx_AbortSignal) && Address==RX_BUFF && ReadEnable  |-> ##0 (DataOut == '0); //Sjekk denne
   endproperty
 
 
-  //15 //Mulig denne er for dårlig
+  //15 //Mulig denne er for dårlig //Prøv å lag en sjekk for at ikke all data har blitt lest fra bufferet??
   property Receive_ReadyValid;
     @(posedge Clk) disable iff (!Rst) Rx_Ready |-> !(Rx_FrameError || Rx_Overflow || Rx_AbortSignal);
   endproperty
@@ -144,6 +157,61 @@ module assertions_hdlc (
    @(posedge Clk) disable iff (!Rst) $rose(Rx_Overflow) |-> ##1 Rx_Overflow until_with first_match(##[0:$] Rx_FlagDetect) ##1 !Rx_Overflow;
   endproperty
 
+  sequence Tx_flag;
+    !Tx ##1 Tx [*6] ##1 !Tx;
+  endsequence
+
+  //5
+  property Transmit_startframe;
+    @(posedge Clk) disable iff (!Rst || Tx_AbortedTrans) $rose(Tx_Enable) ##0 first_match(##[1:$] $rose(Tx_FCSDone)) ##0 first_match(##[0:$] !Tx_ValidFrame)|-> ##[1:7] Tx_flag;
+  endproperty
+
+  property Transmit_endframe;
+    @(posedge Clk) disable iff (!Rst || Tx_AbortedTrans) 
+  $rose(Tx_Enable) ##0 first_match(##[1:$] $rose(Tx_FCSDone)) ##0 first_match(##[0:$] !Tx_ValidFrame) ##0
+    first_match(##[0:$] $fell(Tx_ValidFrame && Tx_FCSDone)) |-> ##[1:7] Tx_flag;
+  endproperty
+
+
+
+  //17 
+  property Transmit_done;
+  	int framesize = 0;
+ /*   @(posedge Clk) disable iff (!Rst) $rose(Tx_Enable) ##1 (1,framesize=Tx_FrameSize-1,$display("SF %d %t",framesize,$time())) ##0 first_match(##[1:$] $rose(Tx_FCSDone)) 
+    ##[0:1] (Tx_RdBuff, framesize--,$display("FS %d %t",framesize,$time())) ##0 (##[1:11] (Tx_RdBuff, framesize--,$display("FS %d %t",framesize,$time()))) [*0:128] ##0  (framesize <= 0) 
+    |-> ##1 Tx_Done;
+*/
+
+    @(posedge Clk) disable iff (!Rst) $rose(Tx_Enable) ##1 (1,framesize=Tx_FrameSize-1) ##0 first_match(##[1:$] $rose(Tx_FCSDone)) 
+    ##[0:1] (Tx_RdBuff, framesize--) ##0 (##[1:11] (Tx_RdBuff, framesize--)) [*0:128] ##0  (framesize <= 0) 
+    |-> ##1 Tx_Done;
+  endproperty
+
+  //18
+  property Transmit_overflow;                                                       //XXXXXX1X
+    @(posedge Clk) disable iff (!Rst || ((Address == 0 && WriteEnable && DataIn == 8'b00000010))) $fell(Tx_Done) ##0 (Address == 1 && WriteEnable) [->127] |-> ##0 Tx_Full;
+  
+  endproperty
+
+
+  //9
+  property Transmit_aborted;
+    @(posedge Clk) disable iff (!Rst) (Address == 0 && WriteEnable && DataIn == 8'b00000100 && !Tx_Done) |-> ##3 Tx_AbortedTrans;
+  
+  endproperty
+
+
+//8
+
+  sequence Tx_abort;
+    !Tx ##1 Tx [*7];
+  endsequence
+
+
+  property Transmit_abort_gen;
+    @(posedge Clk) disable iff (!Rst) $rose(Tx_AbortedTrans) |-> ##[2:4] Tx_abort;
+  
+  endproperty
 
 
 
@@ -283,6 +351,27 @@ automatic   logic  skipnext = 0;
                            		else begin $error("Rx EoF error"); ErrCntAssertions++; end
 
 
+
+   Transmit_aborted_Assert  :  assert property (Transmit_aborted) $display("PASS: Transmit_aborted");
+	                       		else begin $error("Tx_AbortedTrans not set"); ErrCntAssertions++; end
+
+   Transmit_overflow_Assert  :  assert property (Transmit_overflow) $display("PASS: Transmit_overflow");
+	                       		else begin $error("Tx_Full not set"); ErrCntAssertions++; end
+
+
+   Transmit_abort_gen_Assert  :  assert property (Transmit_abort_gen) $display("PASS: Transmit_abort_gen");
+	                       		else begin $error("Abort pattern not generated"); ErrCntAssertions++; end
+
+
+   Transmit_done_Assert  :  assert property (Transmit_done) $display("PASS: Transmit_done");
+	                       		else begin $error("Tx_done not set"); ErrCntAssertions++; end
+
+
+   Transmit_endframe_Assert  :  assert property (Transmit_endframe) $display("PASS: Transmit_endframe");
+	                       		else begin $error("Tx end flag not generated"); ErrCntAssertions++; end
+
+   Transmit_startframe_Assert  :  assert property (Transmit_startframe) $display("PASS: Transmit_startframe");
+	                       		else begin $error("Tx Start flag not generated"); ErrCntAssertions++; end
 
 /*
   property Transmit_AbortDetect;

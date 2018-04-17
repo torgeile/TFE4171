@@ -15,7 +15,6 @@ module test_hdlc ();
   assign uin_hdlc.Rx_StartZeroDetect = u_dut.Rx_StartZeroDetect;
   assign uin_hdlc.Rx_NewByte 		 = u_dut.Rx_NewByte;
 
-  assign uin_hdlc.Tx_AbortedTrans    = u_dut.Tx_AbortedTrans;
   assign uin_hdlc.Rx_Data		     = u_dut.Rx_Data;
   assign uin_hdlc.Rx_Overflow		 = u_dut.Rx_Overflow;
   assign uin_hdlc.Rx_EoF		 	 = u_dut.Rx_EoF;
@@ -27,6 +26,16 @@ module test_hdlc ();
   assign uin_hdlc.Rx_DataBuffOut	 = u_dut.Rx_DataBuffOut;
   assign uin_hdlc.Rx_AbortSignal	 = u_dut.Rx_AbortSignal;
   assign uin_hdlc.Rx_FCSerr			 = u_dut.Rx_FCSerr;
+
+  assign uin_hdlc.Tx_Full	         = u_dut.Tx_Full;
+  assign uin_hdlc.Tx_FCSDone	     = u_dut.Tx_FCSDone;
+  assign uin_hdlc.Tx_AbortFrame	     = u_dut.Tx_AbortFrame;
+  assign uin_hdlc.Tx_NewByte	     = u_dut.Tx_NewByte;
+  assign uin_hdlc.Tx_Enable	         = u_dut.Tx_Enable;
+  assign uin_hdlc.Tx_ValidFrame	     = u_dut.Tx_ValidFrame;
+  assign uin_hdlc.Tx_FrameSize	     = u_dut.Tx_FrameSize;
+  assign uin_hdlc.Tx_RdBuff	         = u_dut.Tx_RdBuff;
+  assign uin_hdlc.Tx_AbortedTrans    = u_dut.Tx_AbortedTrans;
 
 
 
@@ -45,9 +54,9 @@ module test_hdlc ();
   .DataIn(uin_hdlc.DataIn),
   .DataOut(uin_hdlc.DataOut),
   // TX
-  .Tx(),
-  .TxEN(),
-  .Tx_Done(),
+  .Tx(uin_hdlc.Tx),
+  .TxEN(uin_hdlc.TxEN),
+  .Tx_Done(uin_hdlc.Tx_Done),
   // RX
   .Rx(          uin_hdlc.Rx          ),
   .RxEN(        uin_hdlc.RxEN        ),

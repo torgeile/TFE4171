@@ -40,10 +40,10 @@ program testPr_hdlc(
     init();
 
     //Tests:
-    Receive();
 
 
-    //Transmit();
+    //Receive();
+    Transmit();
 
     $display("*************************************************************");
     $display("%t - Finishing Test Program", $time);
@@ -68,6 +68,10 @@ program testPr_hdlc(
     uin_hdlc.Rst         =   1'b0;
     uin_hdlc.Rx          =   1'b1;
     uin_hdlc.RxEN        =   1'b1;
+    uin_hdlc.TxEN        =   1'b1;
+    uin_hdlc.DataIn      =   '0;
+    uin_hdlc.Address     =   '0;
+
 
     uin_hdlc.WriteEnable = 1'b0;
     uin_hdlc.ReadEnable  = 1'b0;
@@ -96,6 +100,154 @@ program testPr_hdlc(
     @(posedge uin_hdlc.Clk);
     uin_hdlc.ReadEnable = 1'b0;
   endtask
+
+
+  task Transmit();
+    logic [7:0] ReadData;
+    repeat(10)
+  		@(posedge uin_hdlc.Clk);
+
+//	Tx_sendRandom();
+
+	Tx_send(3);
+	Tx_sendAbort();
+    repeat(90)
+  		@(posedge uin_hdlc.Clk);
+/*
+   WriteAddress(TX_SC,TX_ABORTFRAME);
+    repeat(20)
+  		@(posedge uin_hdlc.Clk);
+*/
+	Tx_sendOverflow();
+
+    repeat(90)
+  		@(posedge uin_hdlc.Clk);
+
+
+
+  for (int i = 0; i < 0; i++) begin
+	    $display("%t New random message ================", $time);
+
+		Tx_sendRandom();
+    repeat($urandom_range(0, 20))
+  		@(posedge uin_hdlc.Clk);
+
+	    ReadAddress(TX_SC, ReadData);
+	    $display("Tx_SC=%b", ReadData);
+
+    repeat(90)
+  		@(posedge uin_hdlc.Clk);
+
+
+  end
+
+    repeat(90)
+  		@(posedge uin_hdlc.Clk);
+
+  endtask
+
+
+  task Tx_sendRandom();
+  logic [7:0] size;
+  automatic logic done = 1'b0;
+  logic [7:0] ReadData;
+
+
+  size = $urandom_range(2, 126);
+
+  for (int i = 0; i < size; i++) begin
+  	WriteAddress(TX_BUFF, $urandom());
+  end
+
+   WriteAddress(TX_SC,TX_ENABLE);
+
+    while(!done)
+    begin
+   		ReadAddress(TX_SC,ReadData);
+        done = ReadData[0];
+    end
+
+  endtask
+
+
+  task Tx_sendAbort();
+  automatic logic done = 1'b0;
+  logic [7:0] ReadData;
+  int size;
+	    $display("%t New abort message ================", $time);
+  size = $urandom_range(50, 120);
+
+  for (int i = 0; i < size; i++) begin
+  	WriteAddress(TX_BUFF, $urandom());
+  end
+
+   WriteAddress(TX_SC,TX_ENABLE);
+
+    repeat(700)
+  		@(posedge uin_hdlc.Clk);
+
+   WriteAddress(TX_SC,TX_ABORTFRAME);
+
+
+    while(!done)
+    begin
+   		ReadAddress(TX_SC,ReadData);
+        done = ReadData[0];
+    end
+    repeat(2)
+  		@(posedge uin_hdlc.Clk);
+
+  endtask
+
+  task Tx_send(input int size);
+  automatic logic done = 1'b0;
+  logic [7:0] ReadData;
+	    $display("%t New short message ================", $time);
+
+
+  for (int i = 0; i < size; i++) begin
+  	WriteAddress(TX_BUFF, $urandom());
+  end
+
+   WriteAddress(TX_SC,TX_ENABLE);
+
+    while(!done)
+    begin
+   		ReadAddress(TX_SC,ReadData);
+        done = ReadData[0];
+    end
+    repeat(2)
+  		@(posedge uin_hdlc.Clk);
+
+  endtask
+
+
+  task Tx_sendOverflow();
+  logic [7:0] size;
+  automatic logic done = 1'b0;
+  logic [7:0] ReadData;
+	    $display("%t New Overflow message ================", $time);
+
+
+  size = 130;
+
+  for (int i = 0; i < size; i++) begin
+  	WriteAddress(TX_BUFF, $urandom());
+  end
+
+   WriteAddress(TX_SC,TX_ENABLE);
+
+    while(!done)
+    begin
+   		ReadAddress(TX_SC,ReadData);
+        done = ReadData[0];
+    end
+    repeat(2)
+  		@(posedge uin_hdlc.Clk);
+
+  endtask
+
+
 
   task Receive();
     logic [7:0] ReadData;
@@ -414,10 +566,6 @@ Rx_sendNonAligned();
 
 
 
-  task Transmit();
-
-
-  endtask
 
 
 endprogram

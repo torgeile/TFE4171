@@ -31,6 +31,15 @@ interface in_hdlc ();
 
   // Tx - internal
   logic       Tx_AbortedTrans;
+  logic 	  Tx_Full;
+  logic 	  Tx_FCSDone;
+  logic 	  Tx_AbortFrame;
+  logic 	  Tx_NewByte;
+  logic 	  Tx_Enable;
+  logic 	  Tx_ValidFrame;
+  logic 	  [7:0] Tx_FrameSize;
+  logic 	  Tx_RdBuff;
+
 
   // Rx - internal
   logic     Rx_FlagDetect;

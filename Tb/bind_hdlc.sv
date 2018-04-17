@@ -31,8 +31,21 @@ module bind_hdlc ();
 	.Rx_Ready(uin_hdlc.Rx_Ready),
 	.Rx_FCSerr(uin_hdlc.Rx_FCSerr),
 
+	.WriteEnable(uin_hdlc.WriteEnable),
+	.DataIn(uin_hdlc.DataIn),
 
-	
+
+ 
+	.Tx_Done(uin_hdlc.Tx_Done),
+	.Tx_Full(uin_hdlc.Tx_Full),
+	.Tx_FCSDone(uin_hdlc.Tx_FCSDone),
+	.Tx_AbortFrame(uin_hdlc.Tx_AbortFrame),
+	.Tx_NewByte(uin_hdlc.Tx_NewByte),
+	.Tx(uin_hdlc.Tx),
+	.Tx_Enable(uin_hdlc.Tx_Enable),
+	.Tx_ValidFrame(uin_hdlc.Tx_ValidFrame),
+	.Tx_FrameSize(uin_hdlc.Tx_FrameSize),
+	.Tx_RdBuff(uin_hdlc.Tx_RdBuff),
 
     .Tx_AbortedTrans(uin_hdlc.Tx_AbortedTrans)
   );
