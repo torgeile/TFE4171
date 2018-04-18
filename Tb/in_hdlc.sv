@@ -39,7 +39,9 @@ interface in_hdlc ();
   logic 	  Tx_ValidFrame;
   logic 	  [7:0] Tx_FrameSize;
   logic 	  Tx_RdBuff;
-
+  logic		[127:0][7:0] Tx_DataArray;
+  logic		  Tx_WriteFCS;
+  logic 	  [7:0]Tx_Data;
 
   // Rx - internal
   logic     Rx_FlagDetect;

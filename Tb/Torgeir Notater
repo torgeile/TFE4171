@@ -1,4 +1,4 @@
 Bugs:
 Fjerner ikke 0 hvis den er en extra bit sist i checksum
 Kort meldin til TX RETT etter lang melding
-//Rare ting skjer i TX hvis en frame er to bytes (+FCS)
+Rare ting skjer i TX hvis en frame er to bytes (+FCS), FCS blir FF FF ?

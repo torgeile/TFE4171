@@ -118,14 +118,14 @@ program testPr_hdlc(
     repeat(20)
   		@(posedge uin_hdlc.Clk);
 */
-	Tx_sendOverflow();
+//	Tx_sendOverflow();
 
     repeat(90)
   		@(posedge uin_hdlc.Clk);
 
 
 
-  for (int i = 0; i < 0; i++) begin
+  for (int i = 0; i < 2; i++) begin
 	    $display("%t New random message ================", $time);
 
 		Tx_sendRandom();
@@ -153,7 +153,7 @@ program testPr_hdlc(
   logic [7:0] ReadData;
 
 
-  size = $urandom_range(2, 126);
+  size = $urandom_range(3, 126);
 
   for (int i = 0; i < size; i++) begin
   	WriteAddress(TX_BUFF, $urandom());

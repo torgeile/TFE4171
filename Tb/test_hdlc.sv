@@ -36,6 +36,9 @@ module test_hdlc ();
   assign uin_hdlc.Tx_FrameSize	     = u_dut.Tx_FrameSize;
   assign uin_hdlc.Tx_RdBuff	         = u_dut.Tx_RdBuff;
   assign uin_hdlc.Tx_AbortedTrans    = u_dut.Tx_AbortedTrans;
+  assign uin_hdlc.Tx_DataArray       = u_dut.Tx_DataArray;
+  assign uin_hdlc.Tx_WriteFCS        = u_dut.Tx_WriteFCS;
+  assign uin_hdlc.Tx_Data            = u_dut.Tx_Data;
 
 
 

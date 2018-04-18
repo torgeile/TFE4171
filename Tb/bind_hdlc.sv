@@ -46,6 +46,12 @@ module bind_hdlc ();
 	.Tx_ValidFrame(uin_hdlc.Tx_ValidFrame),
 	.Tx_FrameSize(uin_hdlc.Tx_FrameSize),
 	.Tx_RdBuff(uin_hdlc.Tx_RdBuff),
+	.Tx_DataArray(uin_hdlc.Tx_DataArray),
+	.Tx_WriteFCS(uin_hdlc.Tx_WriteFCS),
+	.Tx_Data(uin_hdlc.Tx_Data),
+
+
+	
 
     .Tx_AbortedTrans(uin_hdlc.Tx_AbortedTrans)
   );

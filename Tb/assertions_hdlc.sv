@@ -40,6 +40,13 @@ module assertions_hdlc (
   input logic Tx_ValidFrame,
   input logic [7:0]Tx_FrameSize,
   input logic Tx_RdBuff,
+  input logic [127:0][7:0] Tx_DataArray,
+  input logic Tx_WriteFCS,
+  input logic [7:0]Tx_Data,
+
+
+
+
 
 
   input logic [2:0] Address,
@@ -190,7 +197,6 @@ module assertions_hdlc (
   //18
   property Transmit_overflow;                                                       //XXXXXX1X
     @(posedge Clk) disable iff (!Rst || ((Address == 0 && WriteEnable && DataIn == 8'b00000010))) $fell(Tx_Done) ##0 (Address == 1 && WriteEnable) [->127] |-> ##0 Tx_Full;
-  
   endproperty
 
 
@@ -207,19 +213,37 @@ module assertions_hdlc (
     !Tx ##1 Tx [*7];
   endsequence
 
-
   property Transmit_abort_gen;
-    @(posedge Clk) disable iff (!Rst) $rose(Tx_AbortedTrans) |-> ##[2:4] Tx_abort;
-  
+    @(posedge Clk) disable iff (!Rst) $rose(Tx_AbortedTrans) |-> ##[2:4] Tx_abort;  
   endproperty
 
+/*
+  property Transmit_FCS;
+	logic [127:0] [7:0] Tx_Buff;
+  	int framesize = 0;  	
+    @(posedge Clk) disable iff (!Rst) $rose(Tx_FCSDone,Tx_Buff = Tx_DataArray,framesize = Tx_FrameSize) ##[0:$] 
+    (Tx_WriteFCS,Tx_Buff[framesize]=Tx_Data,framesize++) ##[0:20] (Tx_WriteFCS,Tx_Buff[framesize]=Tx_Data)
+     |-> checkCRC(Tx_Buff,framesize,1'b1);
+  endproperty
+*/
+  property Transmit_FCS;
+	logic [127:0] [7:0] Tx_Buff;
+  	logic [7:0] framesize;  	
+    @(posedge Clk) disable iff (!Rst || Tx_AbortedTrans) ($rose(Tx_FCSDone),Tx_Buff = Tx_DataArray,framesize = Tx_FrameSize) ##0 first_match(##[0:$] Tx_WriteFCS) 
+    ##[1:10] (Tx_WriteFCS,Tx_Buff[framesize]=Tx_Data,framesize++) ##1 (1'b1,Tx_Buff[framesize]=Tx_Data)
+     |-> checkCRC(Tx_Buff,framesize+1,1'b1);
+  endproperty
+
+   Transmit_FCS_Assert          :  assert property (Transmit_FCS) $display("PASS: Transmit_FCS");
+	                       		else begin $error("Tx FCS not correct"); ErrCntAssertions++; end
 
 
-
-function automatic logic checkCRC([127:0] [7:0] arrayA, int size, logic Rx_FCSen);
+function automatic logic checkCRC([127:0] [7:0] arrayA, int size, logic FCSen);
 automatic logic noError = 1'b1;
     logic [15:0] tempCRC;
     logic [23:0] tempStore;
+    $display("InArray =%h", arrayA[10:0]);
+    $display("Framesize =%d", size);
 
 	tempCRC = {arrayA[size-1],arrayA[size-2]};
 	arrayA[size-1] = '0;
@@ -238,14 +262,13 @@ automatic logic noError = 1'b1;
         tempStore = tempStore >> 1;
       end
     end
-//    $display("time = %t", $time);
+    $display("time = %t", $time);
 
-//    $display("InArray =%h", arrayA[10:0]);
 
-//    $display("tempCRC =%h", tempCRC);
-//    $display("calcCRC =%h", tempStore[15:0]);
+    $display("tempCRC =%h", tempCRC);
+    $display("calcCRC =%h", tempStore[15:0]);
 
-   if (Rx_FCSen) begin
+   if (FCSen) begin
 //    $display("Return =%b", tempCRC == tempStore[15:0]);
 
    	return (tempCRC == tempStore[15:0]);
@@ -372,14 +395,5 @@ automatic   logic  skipnext = 0;
 
    Transmit_startframe_Assert  :  assert property (Transmit_startframe) $display("PASS: Transmit_startframe");
 	                       		else begin $error("Tx Start flag not generated"); ErrCntAssertions++; end
-
-/*
-  property Transmit_AbortDetect;
-    @(posedge Clk) Tx_AbortedTrans |-> ##1 Rx_abort;
-  endproperty
-
-  Transmit_AbortInsert_Assert  :  assert property (Transmit_AbortDetect) $display("PASS: Transmit_AbortDetect");
-                                  else begin $error("Abort sequence did not generated after Tx_AbortedTrans"); ErrCntAssertions++; end
-*/
 
 endmodule
