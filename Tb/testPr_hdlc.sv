@@ -109,8 +109,8 @@ program testPr_hdlc(
 
 //	Tx_sendRandom();
 
-	Tx_send(3);
-	Tx_sendAbort();
+	Tx_send(5);
+//	Tx_sendAbort();
     repeat(90)
   		@(posedge uin_hdlc.Clk);
 /*
@@ -125,7 +125,7 @@ program testPr_hdlc(
 
 
 
-  for (int i = 0; i < 2; i++) begin
+  for (int i = 0; i < 1000; i++) begin
 	    $display("%t New random message ================", $time);
 
 		Tx_sendRandom();

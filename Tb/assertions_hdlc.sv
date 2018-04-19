@@ -195,15 +195,14 @@ module assertions_hdlc (
   endproperty
 
   //18
-  property Transmit_overflow;                                                       //XXXXXX1X
-    @(posedge Clk) disable iff (!Rst || ((Address == 0 && WriteEnable && DataIn == 8'b00000010))) $fell(Tx_Done) ##0 (Address == 1 && WriteEnable) [->127] |-> ##0 Tx_Full;
+  property Transmit_overflow;                                                       
+    @(posedge Clk) disable iff (!Rst || ((Address == 0 && WriteEnable && DataIn ==? 8'bxxxxxx1x))) $fell(Tx_Done) ##0 (Address == 1 && WriteEnable) [->127] |-> ##0 Tx_Full;
   endproperty
 
 
   //9
   property Transmit_aborted;
-    @(posedge Clk) disable iff (!Rst) (Address == 0 && WriteEnable && DataIn == 8'b00000100 && !Tx_Done) |-> ##3 Tx_AbortedTrans;
-  
+    @(posedge Clk) disable iff (!Rst) (Address == 0 && WriteEnable && DataIn ==? 8'bxxxxx1xx && !Tx_Done) |-> ##3 Tx_AbortedTrans;
   endproperty
 
 
@@ -217,15 +216,7 @@ module assertions_hdlc (
     @(posedge Clk) disable iff (!Rst) $rose(Tx_AbortedTrans) |-> ##[2:4] Tx_abort;  
   endproperty
 
-/*
-  property Transmit_FCS;
-	logic [127:0] [7:0] Tx_Buff;
-  	int framesize = 0;  	
-    @(posedge Clk) disable iff (!Rst) $rose(Tx_FCSDone,Tx_Buff = Tx_DataArray,framesize = Tx_FrameSize) ##[0:$] 
-    (Tx_WriteFCS,Tx_Buff[framesize]=Tx_Data,framesize++) ##[0:20] (Tx_WriteFCS,Tx_Buff[framesize]=Tx_Data)
-     |-> checkCRC(Tx_Buff,framesize,1'b1);
-  endproperty
-*/
+//11 A
   property Transmit_FCS;
 	logic [127:0] [7:0] Tx_Buff;
   	logic [7:0] framesize;  	
@@ -234,16 +225,113 @@ module assertions_hdlc (
      |-> checkCRC(Tx_Buff,framesize+1,1'b1);
   endproperty
 
-   Transmit_FCS_Assert          :  assert property (Transmit_FCS) $display("PASS: Transmit_FCS");
-	                       		else begin $error("Tx FCS not correct"); ErrCntAssertions++; end
+  //4
+  property Transmit_buffer;
+	logic [127:0] [7:0] temp_buff;
+	logic [127:0] [7:0] Tx_Buff;
+  	int framesize = 0;
+    @(posedge Clk) disable iff (!Rst || !Tx_FCSDone) ($rose(Tx_FCSDone),Tx_Buff = Tx_DataArray) ##0 (first_match(##[1:$] Tx_RdBuff,temp_buff[framesize]=Tx_Data,framesize++)) [*2:126] 
+    ##1 Tx_Done ##1 (1'b1,temp_buff[framesize]=Tx_Data,framesize++)  |-> (compareArray(temp_buff,Tx_Buff,framesize),$display("PASS: Transmit_buffer")); 
+  endproperty
 
+   Transmit_buffer_Assert  :  assert property (Transmit_buffer) $display("PASS: Transmit_buffer");
+	                       		else begin $error("Tx data from buffer not correct"); ErrCntAssertions++; end
+
+// 6 A
+  property Transmit_remove_zero;
+	logic [127*10:0] Tx_real;
+  	int framesize = 0;
+  	int numbits = 0;
+	logic [127:0] [7:0] Tx_Buff; 	
+    @(posedge Clk) disable iff (!Rst)  ($rose(Tx_FCSDone),Tx_Buff = Tx_DataArray, framesize = Tx_FrameSize) ##4 (##0(Tx_ValidFrame,Tx_real[numbits]=Tx,numbits++)) [*1:$]  ##1 ($fell(Tx_ValidFrame), Tx_real[numbits]=Tx,numbits++)
+    |-> compareTX(Tx_Buff, Tx_real, framesize, numbits);
+  endproperty
+
+// 7
+
+function automatic logic compareTX(logic [127:0] [7:0] Tx_Buff, logic [127*10:0]  Tx_real, int framesize, int numbits);
+automatic logic noError = 1'b1;
+automatic logic [127*10:0] calc_Tx = '0;
+logic [23:0] tempStore = '0;
+
+automatic int  calc_Tx_pos = 0;
+
+automatic logic      [4:0] zeroPadding  = '0;
+//    $display("time = %t", $time);
+//	$display("Tx_Buff: %h",Tx_Buff[5:0]);
+
+//	$display("framesize: %d",framesize);
+//	$display("numbits: %d",numbits);
+//	$display("Tx_real: %b",Tx_real[74:0]);
+
+    tempStore[7:0]  = Tx_Buff[0];
+    tempStore[15:8] = Tx_Buff[1];
+
+	//Calculate CRC
+    for (int i = 2; i < framesize+2; i++) begin
+      tempStore[23:16] = Tx_Buff[i];
+      for (int j = 0; j < 8; j++) begin
+        tempStore[16] = tempStore[16] ^ tempStore[0];
+        tempStore[14] = tempStore[14] ^ tempStore[0];
+        tempStore[1]  = tempStore[1]  ^ tempStore[0];
+        tempStore[0]  = tempStore[0]  ^ tempStore[0];
+        tempStore = tempStore >> 1;
+      end
+    end
+
+    Tx_Buff[framesize] = tempStore[7:0];
+    Tx_Buff[framesize+1] = tempStore[15:8];
+
+    //zero insetion
+    for (int i = 0;  i < framesize+2; i++) begin
+      for (int j = 0; j < 8; j++) begin
+        if (&zeroPadding) begin
+          calc_Tx[calc_Tx_pos] = 1'b0;
+          calc_Tx_pos++;
+          zeroPadding      = zeroPadding >> 1;
+          zeroPadding[4]   = 0;
+		//	$display("la til 0");
+
+        end
+        zeroPadding      = zeroPadding >> 1;
+        zeroPadding[4]   = Tx_Buff[i][j];
+        calc_Tx[calc_Tx_pos] = Tx_Buff[i][j];
+        calc_Tx_pos++;
+      end
+    end
+//	$display("new_Tx_real: %h",Tx_real[610:10]);
+
+	//$display("calc_Tx    : %b",calc_Tx[60:0]);
+//	$display("calc_Tx    : %h",calc_Tx[600:0]);
+
+   return (Tx_real[127*10:10] == calc_Tx[127*10-10:0]);
+endfunction
+
+
+function automatic logic compareArray([127:0] [7:0] arrayA, [127:0] [7:0] arrayB, int length);
+automatic logic noError = 1'b1;
+//	$display("arrayA: %h",arrayA[10:0]);
+//	$display("arrayB: %h",arrayB[10:0]);
+//	$display("length: %d",length);
+
+//    $display("time = %t", $time);
+
+    for (int i = 0; i < length; i++) begin
+    	if (arrayA[i] != arrayB[i]) begin
+    		noError = 1'b0;
+    	end 
+        //$display("Rx_Data =%h", arrayA[i]);
+
+    end
+   return noError;
+endfunction
 
 function automatic logic checkCRC([127:0] [7:0] arrayA, int size, logic FCSen);
 automatic logic noError = 1'b1;
     logic [15:0] tempCRC;
     logic [23:0] tempStore;
-    $display("InArray =%h", arrayA[10:0]);
-    $display("Framesize =%d", size);
+//    $display("InArray =%h", arrayA[10:0]);
+//    $display("Framesize =%d", size);
 
 	tempCRC = {arrayA[size-1],arrayA[size-2]};
 	arrayA[size-1] = '0;
@@ -262,11 +350,11 @@ automatic logic noError = 1'b1;
         tempStore = tempStore >> 1;
       end
     end
-    $display("time = %t", $time);
+//    $display("time = %t", $time);
 
 
-    $display("tempCRC =%h", tempCRC);
-    $display("calcCRC =%h", tempStore[15:0]);
+//    $display("tempCRC =%h", tempCRC);
+//    $display("calcCRC =%h", tempStore[15:0]);
 
    if (FCSen) begin
 //    $display("Return =%b", tempCRC == tempStore[15:0]);
@@ -280,19 +368,6 @@ automatic logic noError = 1'b1;
    end
 endfunction
 
-
-function automatic logic compareArray([127:0] [7:0] arrayA, [127:0] [7:0] arrayB, int length);
-automatic logic noError = 1'b1;
-
-    for (int i = 0; i < length; i++) begin
-    	if (arrayA[i] != arrayB[i]) begin
-    		noError = 1'b0;
-    	end 
-        //$display("Rx_Data =%h", arrayA[i]);
-
-    end
-   return noError;
-endfunction
 
 
 function automatic logic[7:0] Zeroremove(logic [14:0] InData);
@@ -374,6 +449,12 @@ automatic   logic  skipnext = 0;
                            		else begin $error("Rx EoF error"); ErrCntAssertions++; end
 
 
+   Transmit_remove_zero_Assert  :  assert property (Transmit_remove_zero) $display("PASS: Transmit_remove_zero");
+	                       		else begin $error("Tx end flag not generated"); ErrCntAssertions++; end
+
+
+   Transmit_FCS_Assert          :  assert property (Transmit_FCS) $display("PASS: Transmit_FCS");
+	                       		else begin $error("Tx FCS not correct"); ErrCntAssertions++; end
 
    Transmit_aborted_Assert  :  assert property (Transmit_aborted) $display("PASS: Transmit_aborted");
 	                       		else begin $error("Tx_AbortedTrans not set"); ErrCntAssertions++; end
