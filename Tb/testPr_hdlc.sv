@@ -42,8 +42,8 @@ program testPr_hdlc(
     //Tests:
 
 
-    //Receive();
-    Transmit();
+    Receive();
+    //Transmit();
 
     $display("*************************************************************");
     $display("%t - Finishing Test Program", $time);
@@ -110,7 +110,7 @@ program testPr_hdlc(
 //	Tx_sendRandom();
 
 	Tx_send(5);
-//	Tx_sendAbort();
+	Tx_sendAbort();
     repeat(90)
   		@(posedge uin_hdlc.Clk);
 /*
@@ -118,14 +118,14 @@ program testPr_hdlc(
     repeat(20)
   		@(posedge uin_hdlc.Clk);
 */
-//	Tx_sendOverflow();
+	Tx_sendOverflow();
 
     repeat(90)
   		@(posedge uin_hdlc.Clk);
 
 
 
-  for (int i = 0; i < 1000; i++) begin
+  for (int i = 0; i < 00; i++) begin
 	    $display("%t New random message ================", $time);
 
 		Tx_sendRandom();
@@ -183,7 +183,7 @@ program testPr_hdlc(
 
    WriteAddress(TX_SC,TX_ENABLE);
 
-    repeat(700)
+    repeat(1000)
   		@(posedge uin_hdlc.Clk);
 
    WriteAddress(TX_SC,TX_ABORTFRAME);
@@ -280,6 +280,7 @@ program testPr_hdlc(
 
 	//Data
 	Rx_Byte('h2D);
+
 	//7E
     uin_hdlc.Rx = 1'b0;
     @(posedge uin_hdlc.Clk);
@@ -300,6 +301,7 @@ program testPr_hdlc(
     uin_hdlc.Rx = 1'b0;
     @(posedge uin_hdlc.Clk);
    // WriteAddress(RX_SC,RX_DROP);
+//	Rx_Byte('hFF);
 
 	//Checksum
 	Rx_Byte('h9D);

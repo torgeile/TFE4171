@@ -213,7 +213,7 @@ module assertions_hdlc (
   endsequence
 
   property Transmit_abort_gen;
-    @(posedge Clk) disable iff (!Rst) $rose(Tx_AbortedTrans) |-> ##[2:4] Tx_abort;  
+    @(posedge Clk) disable iff (!Rst) $rose(Tx_AbortedTrans && $past(Tx_ValidFrame)) |-> ##[2:15] Tx_abort;  
   endproperty
 
 //11 A
@@ -243,11 +243,20 @@ module assertions_hdlc (
   	int framesize = 0;
   	int numbits = 0;
 	logic [127:0] [7:0] Tx_Buff; 	
-    @(posedge Clk) disable iff (!Rst)  ($rose(Tx_FCSDone),Tx_Buff = Tx_DataArray, framesize = Tx_FrameSize) ##4 (##0(Tx_ValidFrame,Tx_real[numbits]=Tx,numbits++)) [*1:$]  ##1 ($fell(Tx_ValidFrame), Tx_real[numbits]=Tx,numbits++)
+    @(posedge Clk) disable iff (!Rst || Tx_AbortedTrans)  ($rose(Tx_FCSDone),Tx_Buff = Tx_DataArray, framesize = Tx_FrameSize) ##4 (##0(Tx_ValidFrame,Tx_real[numbits]=Tx,numbits++)) [*1:$]  ##1 ($fell(Tx_ValidFrame), Tx_real[numbits]=Tx,numbits++)
     |-> compareTX(Tx_Buff, Tx_real, framesize, numbits);
   endproperty
 
 // 7
+
+  property Transmit_idle;
+    @(posedge Clk) disable iff (!Rst) !Tx_ValidFrame [*10] |-> Tx;
+  endproperty
+
+   Transmit_idle_Assert  :  assert property (Transmit_idle) /*$display("PASS: Transmit_idle");*/
+	                       		else begin $error("Tx data not generated"); ErrCntAssertions++; end
+
+
 
 function automatic logic compareTX(logic [127:0] [7:0] Tx_Buff, logic [127*10:0]  Tx_real, int framesize, int numbits);
 automatic logic noError = 1'b1;
@@ -264,10 +273,11 @@ automatic logic      [4:0] zeroPadding  = '0;
 //	$display("numbits: %d",numbits);
 //	$display("Tx_real: %b",Tx_real[74:0]);
 
+	//Calculate CRC
+
     tempStore[7:0]  = Tx_Buff[0];
     tempStore[15:8] = Tx_Buff[1];
 
-	//Calculate CRC
     for (int i = 2; i < framesize+2; i++) begin
       tempStore[23:16] = Tx_Buff[i];
       for (int j = 0; j < 8; j++) begin
@@ -450,7 +460,7 @@ automatic   logic  skipnext = 0;
 
 
    Transmit_remove_zero_Assert  :  assert property (Transmit_remove_zero) $display("PASS: Transmit_remove_zero");
-	                       		else begin $error("Tx end flag not generated"); ErrCntAssertions++; end
+	                       		else begin $error("Tx error in zero insertion"); ErrCntAssertions++; end
 
 
    Transmit_FCS_Assert          :  assert property (Transmit_FCS) $display("PASS: Transmit_FCS");
