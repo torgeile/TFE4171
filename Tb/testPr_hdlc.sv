@@ -28,7 +28,7 @@ program testPr_hdlc(
   parameter RX_FCSEN        = 8'b0010_0000;
 
   parameter FLAG  = 8'b0111_1110;
-  parameter ABORT = 8'b0111_1111;
+  parameter ABORT = 8'b1111_1110;
 
   int TbErrorCnt;
 
@@ -256,13 +256,19 @@ program testPr_hdlc(
 
 
    WriteAddress(RX_SC,RX_FCSEN);
+/*
+	Rx_Byte(FLAG);
+	Rx_Byte('h2D);
+	Rx_Byte('h2D);
+	Rx_Byte('h11);
+*/
+//	Rx_Byte(ABORT);
+    uin_hdlc.Rx = 1'b1;
 
-	//Rx_Byte(FLAG);
-	//Rx_Byte('h2D);
+	    repeat(200)
+	      @(posedge uin_hdlc.Clk);
 
-	//Rx_Byte(ABORT);
-
-
+/*
 	$display("%t New remove zero message ================", $time);
     uin_hdlc.Rx = 1'b1;
 	    repeat(2)
@@ -311,7 +317,7 @@ program testPr_hdlc(
     uin_hdlc.Rx = 1'b1;
 	    repeat(18)
 	      @(posedge uin_hdlc.Clk);
-
+*/
 	$display("%t New remove zero message ================", $time);
 
 	shortmessage[0] = 'h71;
@@ -330,10 +336,10 @@ program testPr_hdlc(
 
 	    repeat(15)
 	      @(posedge uin_hdlc.Clk);
-Rx_sendCRCerror();
+//Rx_sendCRCerror();
 
-Rx_sendoverflow();
-Rx_sendNonAligned();
+//Rx_sendoverflow();
+//Rx_sendNonAligned();
 
 /*
 	$display("%t New Aborted message ================", $time);
@@ -355,7 +361,7 @@ Rx_sendNonAligned();
 */
 
   //Loop for reciving lots of valid random data
-  for (int i = 0; i < 1; i++) begin
+  for (int i = 0; i < 10; i++) begin
 	    $display("%t New random message ================", $time);
 
 	    Rx_sendRandom();

@@ -74,13 +74,13 @@ module assertions_hdlc (
   endproperty
 
 
-  sequence Rx_abort; //TODO: Denne er feil, test med den riktige:   !Rx ##1 Rx [*7]
-     Rx [*7] ##1 !Rx;
+  sequence Rx_abort; 
+     !Rx ##1 Rx [*7];
   endsequence
 
   //10
   property Receive_AbortDetect;
-     @(posedge Clk) disable iff (!Rst || !Rx_ValidFrame) Rx_abort |-> ##1 $rose(Rx_AbortDetect);
+     @(posedge Clk) disable iff (!Rst || !Rx_ValidFrame) Rx_abort |-> ##2 $rose(Rx_AbortDetect);
   endproperty
 
 
@@ -110,7 +110,7 @@ module assertions_hdlc (
   // 14
   property Receive_FrameSize;
    int framesize = 1;
-   @(posedge Clk) disable iff (!Rst) Rx_flag ##[18:19] Rx_NewByte ##0 (##[7:9] (Rx_NewByte, framesize++)) [*1:128]  ##0 Rx_FlagDetect
+   @(posedge Clk) disable iff (!Rst || Rx_FrameError) Rx_flag ##[18:19] Rx_NewByte ##0 (##[7:9] (Rx_NewByte, framesize++)) [*1:128]  ##0 Rx_FlagDetect
    |-> ##6 (framesize-2==Rx_FrameSize);
   endproperty
 
@@ -254,8 +254,15 @@ module assertions_hdlc (
   endproperty
 
    Transmit_idle_Assert  :  assert property (Transmit_idle) /*$display("PASS: Transmit_idle");*/
-	                       		else begin $error("Tx data not generated"); ErrCntAssertions++; end
+	                       		else begin $error("Tx Idle patern not generated"); ErrCntAssertions++; end
 
+
+  property Receive_idle;
+    @(posedge Clk) disable iff (!Rst) Rx [*8] |-> !Rx_ValidFrame;
+  endproperty
+
+   Receive_idle_Assert  :  assert property (Receive_idle) $display("PASS: Receive_idle");
+	                       		else begin $error("Rx Idle -> not in idle"); ErrCntAssertions++; end
 
 
 function automatic logic compareTX(logic [127:0] [7:0] Tx_Buff, logic [127*10:0]  Tx_real, int framesize, int numbits);
@@ -274,7 +281,6 @@ automatic logic      [4:0] zeroPadding  = '0;
 //	$display("Tx_real: %b",Tx_real[74:0]);
 
 	//Calculate CRC
-
     tempStore[7:0]  = Tx_Buff[0];
     tempStore[15:8] = Tx_Buff[1];
 
