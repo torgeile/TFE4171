@@ -58,7 +58,11 @@ module assertions_hdlc (
 
   );
 
+  parameter TX_SC   = 3'b000;
+  parameter TX_BUFF = 3'b001;
+  parameter RX_SC   = 3'b010;
   parameter RX_BUFF = 3'b011;
+  parameter RX_LEN  = 3'b100;
 
   initial begin
     ErrCntAssertions = 0;
@@ -184,25 +188,21 @@ module assertions_hdlc (
   //17 
   property Transmit_done;
   	int framesize = 0;
- /*   @(posedge Clk) disable iff (!Rst) $rose(Tx_Enable) ##1 (1,framesize=Tx_FrameSize-1,$display("SF %d %t",framesize,$time())) ##0 first_match(##[1:$] $rose(Tx_FCSDone)) 
-    ##[0:1] (Tx_RdBuff, framesize--,$display("FS %d %t",framesize,$time())) ##0 (##[1:11] (Tx_RdBuff, framesize--,$display("FS %d %t",framesize,$time()))) [*0:128] ##0  (framesize <= 0) 
-    |-> ##1 Tx_Done;
-*/
 
-    @(posedge Clk) disable iff (!Rst) $rose(Tx_Enable) ##1 (1,framesize=Tx_FrameSize-1) ##0 first_match(##[1:$] $rose(Tx_FCSDone)) 
+    @(posedge Clk) disable iff (!Rst || Tx_AbortedTrans) $rose(Tx_Enable) ##1 (1,framesize=Tx_FrameSize-1) ##0 first_match(##[1:$] $rose(Tx_FCSDone)) 
     ##[0:1] (Tx_RdBuff, framesize--) ##0 (##[1:11] (Tx_RdBuff, framesize--)) [*0:128] ##0  (framesize <= 0) 
-    |-> ##1 Tx_Done;
+    |-> ##1 $rose(Tx_Done);
   endproperty
 
   //18
   property Transmit_overflow;                                                       
-    @(posedge Clk) disable iff (!Rst || ((Address == 0 && WriteEnable && DataIn ==? 8'bxxxxxx1x))) $fell(Tx_Done) ##0 (Address == 1 && WriteEnable) [->127] |-> ##0 Tx_Full;
+    @(posedge Clk) disable iff (!Rst || Tx_Enable || Tx_AbortedTrans) $fell(Tx_Done) ##0 (Address == TX_BUFF && WriteEnable) [->127] |-> ##0 Tx_Full;
   endproperty
 
 
   //9
   property Transmit_aborted;
-    @(posedge Clk) disable iff (!Rst) (Address == 0 && WriteEnable && DataIn ==? 8'bxxxxx1xx && !Tx_Done) |-> ##3 Tx_AbortedTrans;
+    @(posedge Clk) disable iff (!Rst) (Address == TX_SC && WriteEnable && DataIn ==? 8'bxxxxx1xx && !Tx_Done) |-> ##4 Tx_AbortedTrans until_with first_match(##[3:$] !Tx_Done) ;
   endproperty
 
 
@@ -237,16 +237,19 @@ module assertions_hdlc (
    Transmit_buffer_Assert  :  assert property (Transmit_buffer) $display("PASS: Transmit_buffer");
 	                       		else begin $error("Tx data from buffer not correct"); ErrCntAssertions++; end
 
-// 6 A
-  property Transmit_remove_zero;
-	logic [127*10:0] Tx_real;
+// 6 A 
+
+
+  property Transmit_insert_zero;
+	logic [127*10:0] Tx_real='0;
   	int framesize = 2;
   	int numbits = 0;
 	logic [128:0] [7:0] Tx_Buff; 	
     @(posedge Clk) disable iff (!Rst || Tx_AbortedTrans) ($rose(Tx_FCSDone),Tx_Buff[0]=Tx_Data) ##3
     (1,Tx_Buff[1]=Tx_Data) ##1
-    (##0(1,Tx_real[numbits]=Tx,numbits++) [*0:10] ##0 (Tx_NewByte,Tx_Buff[framesize]=Tx_Data,framesize++)) [*1:130]  
-    ##1 ($fell(Tx_ValidFrame), Tx_real[numbits]=Tx)
+    (##0(1,Tx_real[numbits]=Tx,numbits++) [*1:11] ##0 (Tx_NewByte,Tx_Buff[framesize]=Tx_Data,framesize++)) [*1:130]  
+    ##1 ($fell(Tx_ValidFrame), Tx_real[numbits-1]=Tx)
+
     |-> compareTX(Tx_Buff, Tx_real, framesize-3);
   endproperty
 
@@ -255,12 +258,12 @@ automatic logic [127*10:0] calc_Tx = '0;
 automatic int  calc_Tx_pos = 0;
 automatic logic      [4:0] zeroPadding  = '0;
 
-    $display("time = %t", $time);
-	$display("Tx_Buff: %h",Tx_Buff[5:0]);
+//    $display("time = %t", $time);
+//	$display("Tx_Buff: %h",Tx_Buff[5:0]);
 
-	$display("framesize: %d",framesize);
-	$display("numbits: %d",numbits);
-	$display("Tx_real: %b",Tx_real[74:0]);
+//	$display("framesize: %d",framesize);
+	//$display("numbits: %d",numbits);
+//	$display("Tx_real: %b",Tx_real[74:0]);
 
     //zero insetion
     for (int i = 0;  i < framesize; i++) begin
@@ -279,10 +282,10 @@ automatic logic      [4:0] zeroPadding  = '0;
         calc_Tx_pos++;
       end
     end
-	$display("Tx_real: %h",Tx_real[1210:10]);
+//	$display("Tx_real: %h",Tx_real[1210:10]);
 
 	//$display("calc_Tx    : %b",calc_Tx[60:0]);
-	$display("calc_Tx: %h",calc_Tx[1200:0]);
+//	$display("calc_Tx: %h",calc_Tx[1200:0]);
 
    return (Tx_real[127*10:10] == calc_Tx[127*10-10:0]);
 endfunction
@@ -450,7 +453,7 @@ automatic   logic  skipnext = 0;
                            		else begin $error("Rx EoF error"); ErrCntAssertions++; end
 
 
-   Transmit_remove_zero_Assert  :  assert property (Transmit_remove_zero) $display("PASS: Transmit_remove_zero");
+   Transmit_insert_zero_Assert  :  assert property (Transmit_insert_zero) $display("PASS: Transmit_insert_zero");
 	                       		else begin $error("Tx error in zero insertion"); ErrCntAssertions++; end
 
 
