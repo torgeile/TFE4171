@@ -240,66 +240,30 @@ module assertions_hdlc (
 // 6 A
   property Transmit_remove_zero;
 	logic [127*10:0] Tx_real;
-  	int framesize = 0;
+  	int framesize = 2;
   	int numbits = 0;
-	logic [127:0] [7:0] Tx_Buff; 	
-    @(posedge Clk) disable iff (!Rst || Tx_AbortedTrans)  ($rose(Tx_FCSDone),Tx_Buff = Tx_DataArray, framesize = Tx_FrameSize) ##4 (##0(Tx_ValidFrame,Tx_real[numbits]=Tx,numbits++)) [*1:$]  ##1 ($fell(Tx_ValidFrame), Tx_real[numbits]=Tx,numbits++)
-    |-> compareTX(Tx_Buff, Tx_real, framesize, numbits);
+	logic [128:0] [7:0] Tx_Buff; 	
+    @(posedge Clk) disable iff (!Rst || Tx_AbortedTrans) ($rose(Tx_FCSDone),Tx_Buff[0]=Tx_Data) ##3
+    (1,Tx_Buff[1]=Tx_Data) ##1
+    (##0(1,Tx_real[numbits]=Tx,numbits++) [*0:10] ##0 (Tx_NewByte,Tx_Buff[framesize]=Tx_Data,framesize++)) [*1:130]  
+    ##1 ($fell(Tx_ValidFrame), Tx_real[numbits]=Tx)
+    |-> compareTX(Tx_Buff, Tx_real, framesize-3);
   endproperty
 
-// 7
-
-  property Transmit_idle;
-    @(posedge Clk) disable iff (!Rst) !Tx_ValidFrame [*10] |-> Tx;
-  endproperty
-
-   Transmit_idle_Assert  :  assert property (Transmit_idle) /*$display("PASS: Transmit_idle");*/
-	                       		else begin $error("Tx Idle patern not generated"); ErrCntAssertions++; end
-
-
-  property Receive_idle;
-    @(posedge Clk) disable iff (!Rst) Rx [*8] |-> !Rx_ValidFrame;
-  endproperty
-
-   Receive_idle_Assert  :  assert property (Receive_idle) $display("PASS: Receive_idle");
-	                       		else begin $error("Rx Idle -> not in idle"); ErrCntAssertions++; end
-
-
-function automatic logic compareTX(logic [127:0] [7:0] Tx_Buff, logic [127*10:0]  Tx_real, int framesize, int numbits);
-automatic logic noError = 1'b1;
+function automatic logic compareTX(logic [128:0] [7:0] Tx_Buff, logic [127*10:0]  Tx_real, int framesize);
 automatic logic [127*10:0] calc_Tx = '0;
-logic [23:0] tempStore = '0;
-
 automatic int  calc_Tx_pos = 0;
-
 automatic logic      [4:0] zeroPadding  = '0;
-//    $display("time = %t", $time);
-//	$display("Tx_Buff: %h",Tx_Buff[5:0]);
 
-//	$display("framesize: %d",framesize);
-//	$display("numbits: %d",numbits);
-//	$display("Tx_real: %b",Tx_real[74:0]);
+    $display("time = %t", $time);
+	$display("Tx_Buff: %h",Tx_Buff[5:0]);
 
-	//Calculate CRC
-    tempStore[7:0]  = Tx_Buff[0];
-    tempStore[15:8] = Tx_Buff[1];
-
-    for (int i = 2; i < framesize+2; i++) begin
-      tempStore[23:16] = Tx_Buff[i];
-      for (int j = 0; j < 8; j++) begin
-        tempStore[16] = tempStore[16] ^ tempStore[0];
-        tempStore[14] = tempStore[14] ^ tempStore[0];
-        tempStore[1]  = tempStore[1]  ^ tempStore[0];
-        tempStore[0]  = tempStore[0]  ^ tempStore[0];
-        tempStore = tempStore >> 1;
-      end
-    end
-
-    Tx_Buff[framesize] = tempStore[7:0];
-    Tx_Buff[framesize+1] = tempStore[15:8];
+	$display("framesize: %d",framesize);
+	$display("numbits: %d",numbits);
+	$display("Tx_real: %b",Tx_real[74:0]);
 
     //zero insetion
-    for (int i = 0;  i < framesize+2; i++) begin
+    for (int i = 0;  i < framesize; i++) begin
       for (int j = 0; j < 8; j++) begin
         if (&zeroPadding) begin
           calc_Tx[calc_Tx_pos] = 1'b0;
@@ -315,13 +279,34 @@ automatic logic      [4:0] zeroPadding  = '0;
         calc_Tx_pos++;
       end
     end
-//	$display("new_Tx_real: %h",Tx_real[610:10]);
+	$display("Tx_real: %h",Tx_real[1210:10]);
 
 	//$display("calc_Tx    : %b",calc_Tx[60:0]);
-//	$display("calc_Tx    : %h",calc_Tx[600:0]);
+	$display("calc_Tx: %h",calc_Tx[1200:0]);
 
    return (Tx_real[127*10:10] == calc_Tx[127*10-10:0]);
 endfunction
+
+
+
+// 7
+
+  property Transmit_idle;
+    @(posedge Clk) disable iff (!Rst) !Tx_ValidFrame [*10] |-> Tx;
+  endproperty
+
+   Transmit_idle_Assert  :  assert property (Transmit_idle) /*$display("PASS: Transmit_idle");*/
+	                       		else begin $error("Tx Idle patern not generated"); ErrCntAssertions++; end
+
+
+  property Receive_idle;
+    @(posedge Clk) disable iff (!Rst) Rx [*8] |-> !Rx_ValidFrame;
+  endproperty
+
+   Receive_idle_Assert  :  assert property (Receive_idle) /*$display("PASS: Receive_idle");*/
+	                       		else begin $error("Rx Idle -> not in idle"); ErrCntAssertions++; end
+
+
 
 
 function automatic logic compareArray([127:0] [7:0] arrayA, [127:0] [7:0] arrayB, int length);
