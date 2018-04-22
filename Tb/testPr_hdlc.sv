@@ -32,6 +32,8 @@ program testPr_hdlc(
 
   int TbErrorCnt;
 
+  semaphore sema = new(1); // Create semaphore with 1 key.
+
   initial begin
     $display("*************************************************************");
     $display("%t - Starting Test Program", $time);
@@ -40,10 +42,16 @@ program testPr_hdlc(
     init();
 
     //Tests:
+  fork
+    begin
+      Receive();
+    end
+    begin
+      Transmit();
+    end 
+  join
 
 
-    //Receive();
-    Transmit();
 
     $display("*************************************************************");
     $display("%t - Finishing Test Program", $time);
@@ -82,16 +90,39 @@ program testPr_hdlc(
     uin_hdlc.Rst         =   1'b1;
   endtask
 
-  task WriteAddress(input logic [2:0] Address ,input logic [7:0] Data);
+  task WriteAddress_Tx(input logic [2:0] Address ,input logic [7:0] Data);
+     sema.get(1); 
+
     @(posedge uin_hdlc.Clk);
     uin_hdlc.Address     = Address;
     uin_hdlc.WriteEnable = 1'b1;
     uin_hdlc.DataIn      = Data;
     @(posedge uin_hdlc.Clk);
     uin_hdlc.WriteEnable = 1'b0;
+     #100ns;
+
+    sema.put(1); 
+
   endtask
 
-  task ReadAddress(input logic [2:0] Address ,output logic [7:0] Data);
+    task WriteAddress_Rx(input logic [2:0] Address ,input logic [7:0] Data);
+     sema.get(1); 
+
+    @(posedge uin_hdlc.Clk);
+    uin_hdlc.Address     = Address;
+    uin_hdlc.WriteEnable = 1'b1;
+    uin_hdlc.DataIn      = Data;
+    @(posedge uin_hdlc.Clk);
+    uin_hdlc.WriteEnable = 1'b0;
+     #100ns;
+
+    sema.put(1); 
+
+  endtask
+
+  task ReadAddress_Tx(input logic [2:0] Address ,output logic [7:0] Data);
+    sema.get(1); 
+
     @(posedge uin_hdlc.Clk);
     uin_hdlc.Address    = Address;
     uin_hdlc.ReadEnable = 1'b1;
@@ -99,11 +130,33 @@ program testPr_hdlc(
     Data                = uin_hdlc.DataOut;
     @(posedge uin_hdlc.Clk);
     uin_hdlc.ReadEnable = 1'b0;
+    #100ns;
+
+    sema.put(1); 
+
+  endtask
+
+  task ReadAddress_Rx(input logic [2:0] Address ,output logic [7:0] Data);
+    sema.get(1); 
+
+    @(posedge uin_hdlc.Clk);
+    uin_hdlc.Address    = Address;
+    uin_hdlc.ReadEnable = 1'b1;
+    #100ns;
+    Data                = uin_hdlc.DataOut;
+    @(posedge uin_hdlc.Clk);
+    uin_hdlc.ReadEnable = 1'b0;
+    #100ns;
+
+    sema.put(1); 
+
   endtask
 
 
   task Transmit();
     logic [7:0] ReadData;
+    $display("Starting Tx test");
+
     repeat(10)
   		@(posedge uin_hdlc.Clk);
 
@@ -125,14 +178,14 @@ program testPr_hdlc(
 
 
 
-  for (int i = 0; i < 0; i++) begin
-	    $display("%t New random message ================", $time);
+  for (int i = 0; i < 500; i++) begin
+	    $display("%t Tx New random message ================", $time);
 
 		Tx_sendRandom();
     repeat($urandom_range(0, 20))
   		@(posedge uin_hdlc.Clk);
 
-	    ReadAddress(TX_SC, ReadData);
+	    ReadAddress_Tx(TX_SC, ReadData);
 	    $display("Tx_SC=%b", ReadData);
 
     repeat(90)
@@ -159,14 +212,14 @@ program testPr_hdlc(
   size = $urandom_range(3, 126);
 
   for (int i = 0; i < size; i++) begin
-  	WriteAddress(TX_BUFF, $urandom());
+  	WriteAddress_Tx(TX_BUFF, $urandom());
   end
 
-   WriteAddress(TX_SC,TX_ENABLE);
+   WriteAddress_Tx(TX_SC,TX_ENABLE);
 
     while(!done)
     begin
-   		ReadAddress(TX_SC,ReadData);
+   		ReadAddress_Tx(TX_SC,ReadData);
         done = ReadData[0];
     end
 
@@ -177,24 +230,24 @@ program testPr_hdlc(
   automatic logic done = 1'b0;
   logic [7:0] ReadData;
   int size;
-	    $display("%t New abort message ================", $time);
+	    $display("%t Tx New abort message ================", $time);
   size = $urandom_range(50, 120);
 
   for (int i = 0; i < size; i++) begin
-  	WriteAddress(TX_BUFF, $urandom());
+  	WriteAddress_Tx(TX_BUFF, $urandom());
   end
 
-   WriteAddress(TX_SC,TX_ENABLE);
+   WriteAddress_Tx(TX_SC,TX_ENABLE);
 
     repeat(1000)
   		@(posedge uin_hdlc.Clk);
 
-   WriteAddress(TX_SC,TX_ABORTFRAME);
+   WriteAddress_Tx(TX_SC,TX_ABORTFRAME);
 
 
     while(!done)
     begin
-   		ReadAddress(TX_SC,ReadData);
+   		ReadAddress_Tx(TX_SC,ReadData);
         done = ReadData[0];
     end
     repeat(2)
@@ -205,18 +258,18 @@ program testPr_hdlc(
   task Tx_send(input int size);
   automatic logic done = 1'b0;
   logic [7:0] ReadData;
-	    $display("%t New short message ================", $time);
+	    $display("%t Tx New short message ================", $time);
 
 
   for (int i = 0; i < size; i++) begin
-  	WriteAddress(TX_BUFF, $urandom());
+  	WriteAddress_Tx(TX_BUFF, $urandom());
   end
 
-   WriteAddress(TX_SC,TX_ENABLE);
+   WriteAddress_Tx(TX_SC,TX_ENABLE);
 
     while(!done)
     begin
-   		ReadAddress(TX_SC,ReadData);
+   		ReadAddress_Tx(TX_SC,ReadData);
         done = ReadData[0];
     end
     repeat(2)
@@ -229,20 +282,20 @@ program testPr_hdlc(
   logic [7:0] size;
   automatic logic done = 1'b0;
   logic [7:0] ReadData;
-	    $display("%t New Overflow message ================", $time);
-
+	    $display("%t Tx New Overflow message ================", $time);
+ 
 
   size = 130;
 
   for (int i = 0; i < size; i++) begin
-  	WriteAddress(TX_BUFF, $urandom());
+  	WriteAddress_Tx(TX_BUFF, $urandom());
   end
 
-   WriteAddress(TX_SC,TX_ENABLE);
+   WriteAddress_Tx(TX_SC,TX_ENABLE);
 
     while(!done)
     begin
-   		ReadAddress(TX_SC,ReadData);
+   		ReadAddress_Tx(TX_SC,ReadData);
         done = ReadData[0];
     end
     repeat(2)
@@ -257,8 +310,9 @@ program testPr_hdlc(
     logic [7:0] ReadLen;
   automatic logic [4:0][7:0] shortmessage = '0;
 
+    $display("Starting Rx test");
 
-   WriteAddress(RX_SC,RX_FCSEN);
+   WriteAddress_Rx(RX_SC,RX_FCSEN);
 /*
 	Rx_Byte(FLAG);
 	Rx_Byte('h2D);
@@ -321,7 +375,7 @@ program testPr_hdlc(
 	    repeat(18)
 	      @(posedge uin_hdlc.Clk);
 */
-	$display("%t New remove zero message ================", $time);
+	$display("%t Rx New remove zero message ================", $time);
 
 	shortmessage[0] = 'h71;
 	shortmessage[1] = 'h9B;
@@ -345,7 +399,7 @@ program testPr_hdlc(
 //Rx_sendNonAligned();
 
 /*
-	$display("%t New Aborted message ================", $time);
+	$display("%t Rx New Aborted message ================", $time);
 
 	shortmessage[0] = 'h00;
 	shortmessage[1] = 'h00;
@@ -364,8 +418,8 @@ program testPr_hdlc(
 */
 
   //Loop for reciving lots of valid random data
-  for (int i = 0; i < 10; i++) begin
-	    $display("%t New random message ================", $time);
+  for (int i = 0; i < 825; i++) begin
+	    $display("%t Rx New random message ================", $time);
 
 	    Rx_sendRandom();
 	    uin_hdlc.Rx = 1'b1;
@@ -373,15 +427,15 @@ program testPr_hdlc(
 	    repeat(10)
 	      @(posedge uin_hdlc.Clk);
 
-	    ReadAddress(RX_SC, ReadData);
+	    ReadAddress_Rx(RX_SC, ReadData);
 	    $display("Rx_SC=%b", ReadData);
 
 
-	    ReadAddress(RX_LEN , ReadLen);
+	    ReadAddress_Rx(RX_LEN , ReadLen);
 	    $display("Rx_Len=%d", ReadLen);
 
 	  for (int i = 0; i < ReadLen; i++) begin
-   		ReadAddress(RX_BUFF , ReadData);
+   		ReadAddress_Rx(RX_BUFF , ReadData);
 	  end
 
   end
@@ -390,19 +444,19 @@ program testPr_hdlc(
 
     repeat(16)
       @(posedge uin_hdlc.Clk);
-    ReadAddress(RX_SC, ReadData);
+    ReadAddress_Rx(RX_SC, ReadData);
     $display("Rx_SC=%b", ReadData);
 
 
-    ReadAddress(RX_LEN , ReadData);
+    ReadAddress_Rx(RX_LEN , ReadData);
     $display("Rx_Len=%h", ReadData);
 
-    ReadAddress(RX_BUFF , ReadData);
+    ReadAddress_Rx(RX_BUFF , ReadData);
     $display("Rx_D =%h", ReadData);
-    ReadAddress(RX_BUFF , ReadData);
+    ReadAddress_Rx(RX_BUFF , ReadData);
     $display("Rx_D =%b", ReadData);
 
-    ReadAddress(RX_BUFF , ReadData);
+    ReadAddress_Rx(RX_BUFF , ReadData);
     $display("Rx_D =%b", ReadData);
 
   endtask
@@ -458,7 +512,7 @@ program testPr_hdlc(
     logic [7:0] ReadData;
     logic [7:0] ReadLen;
 
-	$display("%t New Overflow message ================", $time);
+	$display("%t Rx New Overflow message ================", $time);
 
   for (int i = 0; i < 134; i++) begin
   	Data[i] = $urandom();
@@ -471,11 +525,11 @@ program testPr_hdlc(
 	    repeat(10)
 	      @(posedge uin_hdlc.Clk);
 
-	    ReadAddress(RX_SC, ReadData);
+	    ReadAddress_Rx(RX_SC, ReadData);
 	    $display("Rx_SC=%b", ReadData);
 
 
-	    ReadAddress(RX_LEN , ReadLen);
+	    ReadAddress_Rx(RX_LEN , ReadLen);
 	    $display("Rx_Len=%d", ReadLen);
 
   endtask
@@ -485,7 +539,7 @@ program testPr_hdlc(
     logic [7:0] ReadData;
     logic [7:0] ReadLen;
 
-	$display("%t New CRC error message ================", $time);
+	$display("%t Rx New CRC error message ================", $time);
 
 	shortmessage[0] = 'h11;
 	shortmessage[1] = 'h44;
@@ -501,11 +555,11 @@ program testPr_hdlc(
 	    repeat(10)
 	      @(posedge uin_hdlc.Clk);
 
-	    ReadAddress(RX_SC, ReadData);
+	    ReadAddress_Rx(RX_SC, ReadData);
 	    $display("Rx_SC=%b", ReadData);
 
 
-	    ReadAddress(RX_LEN , ReadLen);
+	    ReadAddress_Rx(RX_LEN , ReadLen);
 	    $display("Rx_Len=%d", ReadLen);
 
   endtask
@@ -515,7 +569,7 @@ program testPr_hdlc(
     logic [7:0] ReadData;
     logic [7:0] ReadLen;
 
-	$display("%t New non aligned message ================", $time);
+	$display("%t Rx New non aligned message ================", $time);
 
 	shortmessage[0] = 'h11;
 	shortmessage[1] = 'h44;
@@ -539,15 +593,15 @@ program testPr_hdlc(
 	    repeat(10)
 	      @(posedge uin_hdlc.Clk);
 
-	    ReadAddress(RX_SC, ReadData);
+	    ReadAddress_Rx(RX_SC, ReadData);
 	    $display("Rx_SC=%b", ReadData);
 
 
-	    ReadAddress(RX_LEN , ReadLen);
+	    ReadAddress_Rx(RX_LEN , ReadLen);
 	    $display("Rx_Len=%d", ReadLen);
 
       for (int i = 0; i < ReadLen; i++) begin
-   		ReadAddress(RX_BUFF , ReadData);
+   		ReadAddress_Rx(RX_BUFF , ReadData);
 	  end
 
 
