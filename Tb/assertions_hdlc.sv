@@ -302,8 +302,8 @@ endfunction
 	                       		else begin $error("Tx Idle patern not generated"); ErrCntAssertions++; end
 
 
-  property Receive_idle;
-    @(posedge Clk) disable iff (!Rst) Rx [*8] |-> !Rx_ValidFrame;
+  property Receive_idle; //Mulig denne gir error hvis abort ikke bye aligned
+    @(posedge Clk) disable iff (!Rst) Rx [*8] |-> ##5 !Rx_ValidFrame;
   endproperty
 
    Receive_idle_Assert  :  assert property (Receive_idle) /*$display("PASS: Receive_idle");*/
