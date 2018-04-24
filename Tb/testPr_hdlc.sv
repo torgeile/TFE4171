@@ -49,6 +49,7 @@ program testPr_hdlc(
       Transmit();
   join
 
+    //Tx_sendOverflow;
 
 
     $display("*************************************************************");
@@ -87,6 +88,87 @@ program testPr_hdlc(
     #1000ns;
     uin_hdlc.Rst         =   1'b1;
   endtask
+
+covergroup hdlc_cg() @(posedge uin_hdlc.Clk);
+    // Coverpoints for Data in/out
+    DataIn: coverpoint uin_hdlc.DataIn {
+        //option.auto_bin_max = 256;
+        bins DataIn_Address[] = {[0:255]};
+    }
+    DataOut: coverpoint uin_hdlc.DataOut {
+        bins DataOut_Address[] = {[0:255]};
+    }
+
+    // Coverpoints for Tx
+    Tx_DataIn: coverpoint uin_hdlc.Tx_Data {
+        bins DataIn_Tx[] = {[0:255]};
+    }
+    Tx_Framesize: coverpoint uin_hdlc.Tx_FrameSize {
+        bins tx_frameSize[] = {[3:126]};
+    }
+    Tx_ValidFrame: coverpoint uin_hdlc.Tx_ValidFrame {
+        bins Tx_frame_valid = {1};
+        bins Tx_frame_not_valid = {0};
+    }
+    Tx_AbortedTrans: coverpoint uin_hdlc.Tx_AbortedTrans {
+        bins tx_trans_not_aborted = {0};
+        bins tx_trans_abort = {1};
+    }
+    Tx_AbortFrame: coverpoint uin_hdlc.Tx_AbortFrame {
+        bins tx_frame_aborted = {1};
+        bins tx_frame_not_aborted = {0};
+    }
+    Tx_Done: coverpoint uin_hdlc.Tx_Done {
+        bins tx_not_done = {0};
+        bins tx_done = {1};
+    }
+    Tx_Full: coverpoint uin_hdlc.Tx_Full {
+        bins tx_not_full = {0};
+        bins tx_full = {1};
+    }
+
+    // Coverpoints for Rx
+    Rx_DataIn: coverpoint uin_hdlc.Rx_Data {
+        bins DataIn_Rx[] = {[0:255]};
+    }
+    Rx_FrameSize: coverpoint uin_hdlc.Rx_FrameSize {
+        bins rx_frameSize[] = {[2:126]};
+    }
+    Rx_Overflow: coverpoint uin_hdlc.Rx_Overflow {
+        bins rx_no_overflow = {0};
+        bins rx_overflow = {1};
+    }
+    Rx_AbortSignal: coverpoint uin_hdlc.Rx_AbortSignal {
+        bins rxsignal_not_aborted = {0};
+        bins rxsignal_aborted = {1};
+    }
+    Rx_FrameError: coverpoint uin_hdlc.Rx_FrameError {
+        bins rx_no_framerr = {0};
+        bins rx_framerr = {1};
+    }
+    Rx_FCSerr: coverpoint uin_hdlc.Rx_FCSerr {
+        bins rx_FCS_error = {1};
+        bins rx_FCS_no_error = {0};
+    }
+    Rx_AbortDetect: coverpoint uin_hdlc.Rx_AbortDetect {
+        bins rx_no_abort_detected = {0};
+        bins rx_abort_detected = {1};
+    }
+endgroup
+
+hdlc_cg hdlc_cg_inst = new();
+
+
+task WriteAddress(input logic [2:0] Address ,input logic [7:0] Data);
+  @(posedge uin_hdlc.Clk);
+  uin_hdlc.Address     = Address;
+  uin_hdlc.WriteEnable = 1'b1;
+  uin_hdlc.DataIn      = Data;
+  uin_hdlc.Rx          = uin_hdlc.Tx; //Added to keep transfering Tx to Rx during write.
+  @(posedge uin_hdlc.Clk);
+  uin_hdlc.Rx          = uin_hdlc.Tx; //Added to keep transfering Tx to Rx during write.
+  uin_hdlc.WriteEnable = 1'b0;
+endtask
 
 task Test(); // used to find bug described in ch2.3.1
 
@@ -142,7 +224,7 @@ endtask
 	    ReadAddress_Tx(TX_SC, ReadData);
 	    $display("Tx_SC=%b", ReadData);
 
-    repeat(90) 
+    repeat(90)
   		@(posedge uin_hdlc.Clk);
 
 
@@ -184,7 +266,7 @@ endtask
 	    repeat(15)
 	      @(posedge uin_hdlc.Clk);
 Rx_sendCRCerror();
-//Rx_sendAbort();
+Rx_sendAbort();
 
 
 
@@ -340,7 +422,7 @@ Rx_sendNonAligned();
   automatic logic done = 1'b0;
   logic [7:0] ReadData;
 	    $display("%t Tx New Overflow message ================", $time);
- 
+
 
   size = 130;
 
@@ -535,8 +617,8 @@ endtask
   endtask
 
 
-  task CalculateFCS(input  logic [127:0][7:0]  data, 
-                    input  logic [7:0]         size, 
+  task CalculateFCS(input  logic [127:0][7:0]  data,
+                    input  logic [7:0]         size,
                     output logic [15:0]        FCSbytes );
 
     logic [23:0] tempStore;
@@ -558,7 +640,7 @@ endtask
 
 
   task WriteAddress_Tx(input logic [2:0] Address ,input logic [7:0] Data);
-     sema.get(1); 
+     sema.get(1);
 
     @(posedge uin_hdlc.Clk);
     uin_hdlc.Address     = Address;
@@ -567,12 +649,12 @@ endtask
     @(posedge uin_hdlc.Clk);
     uin_hdlc.WriteEnable = 1'b0;
 
-    sema.put(1); 
+    sema.put(1);
 
   endtask
 
     task WriteAddress_Rx(input logic [2:0] Address ,input logic [7:0] Data);
-     sema.get(1); 
+     sema.get(1);
 
     @(posedge uin_hdlc.Clk);
     uin_hdlc.Address     = Address;
@@ -581,12 +663,12 @@ endtask
     @(posedge uin_hdlc.Clk);
     uin_hdlc.WriteEnable = 1'b0;
 
-    sema.put(1); 
+    sema.put(1);
 
   endtask
 
   task ReadAddress_Tx(input logic [2:0] Address ,output logic [7:0] Data);
-    sema.get(1); 
+    sema.get(1);
 
     @(posedge uin_hdlc.Clk);
     uin_hdlc.Address    = Address;
@@ -596,12 +678,12 @@ endtask
     @(posedge uin_hdlc.Clk);
     uin_hdlc.ReadEnable = 1'b0;
 
-    sema.put(1); 
+    sema.put(1);
 
   endtask
 
   task ReadAddress_Rx(input logic [2:0] Address ,output logic [7:0] Data);
-    sema.get(1); 
+    sema.get(1);
 
     @(posedge uin_hdlc.Clk);
     uin_hdlc.Address    = Address;
@@ -611,7 +693,7 @@ endtask
     @(posedge uin_hdlc.Clk);
     uin_hdlc.ReadEnable = 1'b0;
 
-    sema.put(1); 
+    sema.put(1);
 
   endtask
 endprogram
